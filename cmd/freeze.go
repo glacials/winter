@@ -8,7 +8,7 @@ import (
 
 	"gg-scm.io/pkg/git"
 	"github.com/spf13/cobra"
-	"twos.dev/winter"
+	"twos.dev/winter/document"
 )
 
 const (
@@ -50,11 +50,11 @@ func newFreezeCmd() *cobra.Command {
 		and adds it to the list of frozen URLs.
 	`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := winter.NewConfig()
+			cfg, err := document.NewConfig()
 			if err != nil {
 				return err
 			}
-			s, err := winter.NewSubstructure(cfg)
+			s, err := document.NewSubstructure(cfg)
 			if err != nil {
 				return err
 			}

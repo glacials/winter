@@ -1,4 +1,4 @@
-package winter
+package document
 
 import (
 	"bytes"
@@ -10,44 +10,46 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-func TestTemplate(t *testing.T) {
+func surround(html string) string {
+	return fmt.Sprintf("<html><head></head><body>%s</body></html>", html)
+}
+
+func TestHTML(t *testing.T) {
 	for _, test := range []testCase{
 		{
-			name:     "NoOp",
-			input:    "abc123",
-			expected: "abc123\n",
+			name:     "Heading",
+			input:    "<h1>Heading 1</h1><h2>Heading 2</h2>",
+			expected: surround("<h2>Heading 2</h2>"),
 		},
 		{
 			name:     "SimpleTemplate",
-			input:    "{{ add 1 2 }}",
-			expected: "3\n",
+			input:    `{{ add 1 2 }}`,
+			expected: surround("{{ add 1 2 }}"),
 		},
 		{
 			name:     "Template",
-			input:    `{{ template "hello_world.tmpl" }}`,
-			expected: "Hello, world!\n\n",
+			input:    `{{ template "_writing.html.tmpl" }}`,
+			expected: surround("{{ template \"_writing.html.tmpl\" }}"),
 		},
 		{
 			name:     "Image",
 			input:    `<img src="/path/to/image.jpg" alt="Alt text" />`,
-			expected: "<img src=\"/path/to/image.jpg\" alt=\"Alt text\" />\n",
+			expected: surround("<img src=\"/path/to/image.jpg\" alt=\"Alt text\"/>"),
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			src := fmt.Sprintf("src/test/%s", test.name)
-			doc := NewTemplateDocument(
+			doc := NewHTMLDocument(
 				src,
 				NewMetadata(src, filepath.Join("testdata", "templates")),
 				nil,
-				nil,
-				nil,
 			)
 			if err := doc.Load(strings.NewReader(test.input)); err != nil {
-				t.Errorf("load failed: %s", err)
+				assert.NilError(t, err)
 			}
 			var actual bytes.Buffer
 			if err := doc.Render(&actual); err != nil {
-				t.Errorf("render failed: %s", err)
+				assert.NilError(t, err)
 			}
 			assert.Equal(t, test.expected, actual.String())
 		})

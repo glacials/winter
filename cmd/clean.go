@@ -6,7 +6,7 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/spf13/cobra"
-	"twos.dev/winter"
+	"twos.dev/winter/document"
 )
 
 func newCleanCmd() *cobra.Command {
@@ -21,7 +21,7 @@ func newCleanCmd() *cobra.Command {
 	`),
 		Args: cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cache, err := xdg.CacheFile(winter.AppName)
+			cache, err := xdg.CacheFile(document.AppName)
 			if err != nil {
 				return fmt.Errorf("cannot find cache: %w", err)
 			}

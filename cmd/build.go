@@ -12,7 +12,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
-	"twos.dev/winter"
+	"twos.dev/winter/document"
 )
 
 const (
@@ -34,7 +34,7 @@ var (
 
 // Builder is a function that builds a source file src into a destination
 // directory dst.
-type Builder func(src, dst string, cfg winter.Config) error
+type Builder func(src, dst string, cfg document.Config) error
 
 func newBuildCmd() *cobra.Command {
 	buildCmd := &cobra.Command{
@@ -43,13 +43,13 @@ func newBuildCmd() *cobra.Command {
 		Long:  `Build the website into dist/.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			log.Println("Reading config.")
-			cfg, err := winter.NewConfig()
+			cfg, err := document.NewConfig()
 			if err != nil {
 				return err
 			}
 
 			log.Println("Building substructure.")
-			s, err := winter.NewSubstructure(cfg)
+			s, err := document.NewSubstructure(cfg)
 			if err != nil {
 				return err
 			}

@@ -1,4 +1,4 @@
-// Package winter supplies a static website generator.
+// Package document supplies a static website generator.
 // It has these goals:
 //
 //  1. New content must be easy to edit. Old content must be hard to break.
@@ -133,7 +133,7 @@
 // [Cool URIs don't change.]: https://www.w3.org/Provider/Style/URI
 // [KaTeX]: https://katex.org
 // [TadiWeb]: https://www.tadiweb.com
-package winter
+package document
 
 import (
 	"fmt"

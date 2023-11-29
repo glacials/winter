@@ -1,4 +1,4 @@
-package winter
+package document
 
 import (
 	"io"

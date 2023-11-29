@@ -12,7 +12,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"golang.org/x/net/websocket"
-	"twos.dev/winter"
+	"twos.dev/winter/document"
 )
 
 // Reloader watches the filesystem for changes to relevant files so it can
@@ -22,7 +22,7 @@ type Reloader struct {
 	// paths that match those patterns. Deprecated: Use Substructure instead.
 	Builders     map[string]Builder
 	Ignore       map[string]struct{}
-	Substructure *winter.Substructure
+	Substructure *document.Substructure
 
 	closeSockets chan struct{}
 	// listeners is a mapping of WebSocket connections browsers have open with us

@@ -7,7 +7,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-	"twos.dev/winter"
+	"twos.dev/winter/document"
 )
 
 func newConfigCmd() *cobra.Command {
@@ -32,7 +32,7 @@ func newConfigCmd() *cobra.Command {
 		`),
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := winter.InteractiveConfig(); err != nil {
+			if err := document.InteractiveConfig(); err != nil {
 				return err
 			}
 			return nil
@@ -55,7 +55,7 @@ func newConfigGetCmd() *cobra.Command {
 		`),
 		Args: cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			c, err := winter.NewConfig()
+			c, err := document.NewConfig()
 			if err != nil {
 				return err
 			}
@@ -92,7 +92,7 @@ func newConfigClearCmd() *cobra.Command {
 		`),
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			p, err := winter.ConfigPath()
+			p, err := document.ConfigPath()
 			if err != nil {
 				return err
 			}
