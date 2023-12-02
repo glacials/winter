@@ -1,12 +1,15 @@
-package cmd
+package cmd // import "twos.dev/winter/cmd"
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+	"twos.dev/winter/cliutils"
+)
 
 func newServeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "serve",
 		Short: "Alias of build --serve",
-		Long: wrap(`
+		Long: cliutils.Sprintf(`
 			Build, serve, and continually rebuild the website.
 
 			Alias of winter build --serve.

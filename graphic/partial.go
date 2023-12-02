@@ -1,6 +1,6 @@
 // Package graphic provides utility functions for finding and building images or
 // videos on the filesystem.
-package graphic
+package graphic // import "twos.dev/winter/graphic"
 
 import (
 	"errors"

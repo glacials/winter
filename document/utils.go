@@ -1,4 +1,4 @@
-package document
+package document // import "twos.dev/winter/document"
 
 import "strings"
 

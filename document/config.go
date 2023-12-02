@@ -1,4 +1,4 @@
-package document
+package document // import "twos.dev/winter/document"
 
 import (
 	"errors"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/gorilla/feeds"
 	"gopkg.in/yaml.v3"
+	"twos.dev/winter/cliutils"
 )
 
 const (
@@ -116,8 +117,8 @@ func InteractiveConfig() error {
 		return err
 	}
 	var c Config
-	c.Author.Name = ask("Author name:")
-	c.Author.Email = ask("Author email:")
+	c.Author.Name = cliutils.MustAsk("Author name:")
+	c.Author.Email = cliutils.MustAsk("Author email:")
 	b, err := yaml.Marshal(c)
 	if err != nil {
 		return err
@@ -138,12 +139,6 @@ func (c Config) Save() error {
 		return err
 	}
 	return os.WriteFile(p, bytes, fs.FileMode(os.O_WRONLY))
-}
-
-func ask(question string) (answer string) {
-	fmt.Println(question)
-	fmt.Scanf(answer)
-	return
 }
 
 func ConfigPath() (string, error) {

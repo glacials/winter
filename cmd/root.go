@@ -1,5 +1,5 @@
 // Package cmd contains the commands for the winter CLI.
-package cmd
+package cmd // import "twos.dev/winter/cmd"
 
 import (
 	"context"
@@ -27,6 +27,7 @@ func Execute() {
 	rootCmd.AddCommand(newCleanCmd())
 	rootCmd.AddCommand(newConfigCmd())
 	rootCmd.AddCommand(newFreezeCmd())
+	rootCmd.AddCommand(newGenerateCommand())
 	rootCmd.AddCommand(newInitCmd())
 	rootCmd.AddCommand(newServeCmd())
 	rootCmd.AddCommand(newTestCmd())

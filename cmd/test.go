@@ -1,4 +1,4 @@
-package cmd
+package cmd // import "twos.dev/winter/cmd"
 
 import (
 	"fmt"
@@ -7,13 +7,14 @@ import (
 	"net/url"
 
 	"github.com/spf13/cobra"
+	"twos.dev/winter/cliutils"
 )
 
 func newTestCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "test <environment>",
 		Short: "Run site-specific integration tests",
-		Long: wrap(`
+		Long: cliutils.Sprintf(`
 			Run site-specific integration tests.
 
 			Ensures the second rule of Winter is followed: cool URLs don't change.
@@ -47,22 +48,10 @@ func newTestCmd() *cobra.Command {
 
 			// In case I ever move off GitHub Pages, make sure we continue this implementation detail;
 			// twos.dev/winter is a required path because that's the Go import path.
-			if err := assert(
-				string(winterBody) == string(winterHTMLBody),
-				"twos.dev/winter and twos.dev/winter.html",
-				"the same page",
-			); err != nil {
-				return err
+			if string(winterBody) != string(winterHTMLBody) {
+				return fmt.Errorf("twos.dev/winter and twos.dev/winter.html must be the same page")
 			}
 			return nil
 		},
 	}
-}
-
-func assert(passed bool, subjects, condition string) error {
-	if passed {
-		fmt.Printf("✅ %s are %s\n", subjects, condition)
-		return nil
-	}
-	return fmt.Errorf("%s are not %s", subjects, condition)
 }

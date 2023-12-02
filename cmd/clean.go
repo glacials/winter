@@ -1,4 +1,4 @@
-package cmd
+package cmd // import "twos.dev/winter/cmd"
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/spf13/cobra"
+	"twos.dev/winter/cliutils"
 	"twos.dev/winter/document"
 )
 
@@ -13,12 +14,12 @@ func newCleanCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "clean",
 		Short: "Purge the Winter cache",
-		Long: wrap(`
-		Purges the internal Winter cache and the current directory's generated site.
+		Long: cliutils.Sprintf(`
+			Purges the internal Winter cache and the current directory's generated site.
 
-		This should be used instead of manually removing dist/,
-		because Winter stores some cache files for large images internally.
-	`),
+			This should be used instead of manually removing dist/,
+			because Winter stores some cache files for large images internally.
+		`),
 		Args: cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cache, err := xdg.CacheFile(document.AppName)

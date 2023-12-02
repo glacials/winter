@@ -1,4 +1,4 @@
-package cmd
+package cmd // import "twos.dev/winter/cmd"
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 	"twos.dev/winter/document"
@@ -108,7 +109,9 @@ func listenForCtrlC(stop chan struct{}, srvr *http.Server, reloader *Reloader) {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 	log.Println("Stopping")
-	if err := srvr.Shutdown(context.TODO()); err != nil {
+	ctx, cancel := context.WithTimeout(context.TODO(), 1*time.Second)
+	defer cancel()
+	if err := srvr.Shutdown(ctx); err != nil {
 		log.Fatal(err)
 	}
 	stop <- struct{}{}

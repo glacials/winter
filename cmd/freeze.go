@@ -1,4 +1,4 @@
-package cmd
+package cmd // import "twos.dev/winter/cmd"
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"gg-scm.io/pkg/git"
 	"github.com/spf13/cobra"
+	"twos.dev/winter/cliutils"
 	"twos.dev/winter/document"
 )
 
@@ -19,36 +20,36 @@ func newFreezeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "freeze [shortname...]",
 		Short: "Turn a warm file cold",
-		Long: wrap(`
-		Converts warm documents specified into cold documents,
-		and commit to keeping them at those URLs forever.
+		Long: cliutils.Sprintf(`
+			Converts warm documents specified into cold documents,
+			and commit to keeping them at those URLs forever.
 
-		"Warm documents" are those that are continually and/or automatically updated by other tools,
-		such as a shell script that automatically synchronizes Markdown files from your notes app.
-		Warm documents are stored in src/warm.
+			"Warm documents" are those that are continually and/or automatically updated by other tools,
+			such as a shell script that automatically synchronizes Markdown files from your notes app.
+			Warm documents are stored in src/warm.
 
-		"Cold documents" are those that must never touched by automated tools,
-		reducing the surface area for bugs in your synchronization process to mangle or delete pages.
-		Cold documents are stored in src/cold.
+			"Cold documents" are those that must never touched by automated tools,
+			reducing the surface area for bugs in your synchronization process to mangle or delete pages.
+			Cold documents are stored in src/cold.
 
-		Conventionally, a document is born warm and remains warm while you work on it;
-		when you are done or near done, you run ` + "`winter freeze <document>`" + ` to protect it from your future selves and tools.
+			Conventionally, a document is born warm and remains warm while you work on it;
+			when you are done or near done, you run ` + "`winter freeze <document>`" + ` to protect it from your future selves and tools.
 
-		` + "`winter freeze`" + ` also saves ALL public HTML URLs on the generated website to a file,
-		which you should commit to your repository.
-		` + "`winter test`" + ` will fail if any of these HTML URLs is ever removed from dist (read: not generated).
+			` + "`winter freeze`" + ` also saves ALL public HTML URLs on the generated website to a file,
+			which you should commit to your repository.
+			` + "`winter test`" + ` will fail if any of these HTML URLs is ever removed from dist (read: not generated).
 
-		To perform this save step without freezing any documents,
-		simply run ` + "`winter freeze`" + ` with no arguments.
-	`),
-		Example: wrap(`
-		This command:
+			To perform this save step without freezing any documents,
+			simply run ` + "`winter freeze`" + ` with no arguments.
+		`),
+		Example: cliutils.Sprintf(`
+			This command:
 
-		    winter freeze src/warm/hello.md
+					winter freeze src/warm/hello.md
 
-		moves the file src/warm/hello.md from src/warm to src/cold,
-		and adds it to the list of frozen URLs.
-	`),
+			moves the file src/warm/hello.md from src/warm to src/cold,
+			and adds it to the list of frozen URLs.
+		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := document.NewConfig()
 			if err != nil {

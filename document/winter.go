@@ -133,7 +133,7 @@
 // [Cool URIs don't change.]: https://www.w3.org/Provider/Style/URI
 // [KaTeX]: https://katex.org
 // [TadiWeb]: https://www.tadiweb.com
-package document
+package document // import "twos.dev/winter/document"
 
 import (
 	"fmt"

@@ -1,4 +1,4 @@
-package document
+package document // import "twos.dev/winter/document"
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 func TestTemplate(t *testing.T) {
 	for _, test := range []testCase{
 		{
-			name:     "NoOp",
+			name:     "Noop",
 			input:    "abc123",
 			expected: "abc123\n",
 		},

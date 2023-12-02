@@ -1,4 +1,4 @@
-package cmd
+package cmd // import "twos.dev/winter/cmd"
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+	"twos.dev/winter/cliutils"
 	"twos.dev/winter/document"
 )
 
@@ -14,7 +15,7 @@ func newConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Interact with Winter configuration",
-		Long: wrap(`
+		Long: cliutils.Sprintf(`
 			Interact with Winter configuration.
 
 			Configuration in ./winter.yml takes first precedence.
@@ -47,7 +48,7 @@ func newConfigGetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get [key]",
 		Short: "Get or list Winter config",
-		Long: wrap(`
+		Long: cliutils.Sprintf(`
 			Get the value of the Winter configuration variable named KEY,
 			or all configuration if KEY is omitted.
 
@@ -86,7 +87,7 @@ func newConfigClearCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "clear",
 		Short: "Erase all config",
-		Long: wrap(`
+		Long: cliutils.Sprintf(`
 			Erase all Winter configuration. Cannot be undone.
 			See winter config --help for information on configuration storage locations.
 		`),
