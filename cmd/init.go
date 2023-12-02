@@ -20,10 +20,12 @@ func newInitCmd() *cobra.Command {
 		Use:   "init",
 		Short: "Initialize a new Winter website",
 		Long: cliutils.Sprintf(`
-			Interactively create a new Winter website.
+			Interactively create a new Winter project.
 
-			This creates the necessary directory structure, configuration, and
-			a simplistic set of templates for minimal operation.
+			Winter will ask you several questions about the new project's
+			name,
+			path,
+			and other details.
 		`),
 		Args: cobra.RangeArgs(0, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -36,15 +38,32 @@ func newInitCmd() *cobra.Command {
 // runInitCmd performs execution of the winter init command.
 // It is separate from the corresponding [cobra.Command] function for easy testing.
 func runInitCmd(in io.Reader, out io.Writer) error {
-	destDirPath, err := cliutils.Ask("Directory [.]:", in, out)
+	destDirPath, err := cliutils.Ask(`
+		- What directory should Winter initialize into?
+		  The directory should be empty or mostly empty.
+		  Several files and directories will be generated.
+
+			This can be changed at any time by simply moving the directory.
+
+		  Directory [.]:
+	`, ".", in, out)
 	if err != nil {
 		return err
 	}
-	if destDirPath == "" {
-		destDirPath = "."
-	}
 	if err := os.MkdirAll(destDirPath, 0o755); err != nil {
 		return fmt.Errorf("cannot make initial directory %q: %w", destDirPath, err)
+	}
+	name, err := cliutils.Ask(fmt.Sprintf(`
+		- What is the human-readable name for your project?
+		  This will be displayed in several places on the final website,
+			for example in the <title> tag.
+
+			This can be changed at any time in winter.yml.
+
+		  Name [%s]:
+	`, filepath.Base(destDirPath)), filepath.Base(destDirPath), in, out)
+	if err != nil {
+		return err
 	}
 	return fs.WalkDir(
 		defaults,
@@ -61,10 +80,6 @@ func runInitCmd(in io.Reader, out io.Writer) error {
 				return err
 			}
 			defer srcFile.Close()
-			// relFilePath, err := filepath.Rel( path)
-			// if err != nil {
-			// 	return err
-			// }
 			destFilePath := filepath.Join(destDirPath, path)
 			destFilePathDir := filepath.Dir(destFilePath)
 			if err := os.MkdirAll(destFilePathDir, 0o755); err != nil {

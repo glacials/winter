@@ -1,18 +1,71 @@
 # yaml-language-server: $schema=https://github.com/glacials/winter/blob/main/cmd/winter.schema.yml
 
-# Winter configuration.
-# Commented values are defaults; uncomment to change.
+# This is the Winter configuration file.
+# Learn more at twos.dev/winter.
+
+# Who is the primary author of content for the generated website?
+# This will be used in the Atom feed and is available for use in templates.
 author:
-  name: changeme
-  email: changeme
-# debug: false
-description: My Winter website.
-# development:
-#   url: localhost:8100
-# dist: dist
-name: Change Me
-# production:
-#   url: twos.dev
-since: 2021
-# src:
-#   - ./src
+  # What is the primary author's name?
+  # This can be a full name, first name, nickname, or alias.
+  name: "{{ .Author.Name }}"
+  # What is the primary author's email address?
+  email: "{{ .Author.Email }}"
+# What is the human-readable description for the generated website?
+# This will be used in the Atom feed and HTML meta tags.
+description: "{{ .Description }}"
+# What is the human-readable name of the generated website?
+# This will be used in the Atom feed,
+# HTML meta tags,
+# and various other places like in <title>.
+name: "{{ .Name }}"
+# Since what year has the generated website existed?
+# This will be included in copyright notices, if any.
+#
+# If the website was migrated from elsewhere to Winter,
+# use the original website's creation year.
+since: "{{ .Now.Year }}"
+
+# Configuration specific to the production environment.
+production:
+  # What will the internet-accessible base URL for the generated website be?
+  # This ensures the Atom feed points to the right place,
+  # and lets Winter open external links in new tabs automatically.
+  #
+  # Use format HOST[:PORT].
+  url: "{{ .URL }}"
+
+# ------------------------------#
+# Advanced configuration below. #
+# ------------------------------#
+
+# Turning on debug mode increases the amount of stdout, stderr, and disk output.
+# This can be helpful if you are working on Winter itself.
+#
+# Default: false
+debug: false
+
+# Configuration specific to the development environment,
+# i.e. what you see what you call winter serve.
+development:
+  # What should the local base URL for the generated website be?
+  #
+  # Use format HOST[:PORT].
+  #
+  # Default: localhost:8100
+  url: localhost:8100
+
+# Into what directory should the final website be built?
+# This is relative to the project root,
+# i.e. the location of winter.yml (this file).
+#
+# Default: dist
+dist: dist
+
+# What directories should be scanned for source documents
+# (Markdown, HTML, Org, etc.)
+# that should be converted into pages for the generated website?
+#
+# Default: [./src]
+src:
+  - ./src
