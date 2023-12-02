@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twos.dev/winter/document/config",
+  "$ref": "#/$defs/Config",
+  "$defs": {
+    "Author": {
+      "properties": {
+        "Name": {
+          "type": "string"
+        },
+        "Email": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Name",
+        "Email"
+      ]
+    },
+    "Config": {
+      "properties": {
+        "Author": {
+          "$ref": "#/$defs/Author",
+          "description": "Author is the information for the website author. This is used in metadata such as that of the RSS feed."
+        },
+        "Debug": {
+          "type": "boolean",
+          "description": "Debug is a flag that enables debug mode."
+        },
+        "Development": {
+          "properties": {
+            "URL": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "URL"
+          ],
+          "description": "Development contains options specific to development. They have no impact when building for production."
+        },
+        "Description": {
+          "type": "string",
+          "description": "Description is the Description of the website. This is used as metadata for the RSS feed."
+        },
+        "Dist": {
+          "type": "string",
+          "description": "Dist is the location the site will be built into, relative to the working directory. After a build, this directory is suitable for deployment to the web as a set of static files.\n\nIn other words, the path of any file in dist, relative to dist, is equivalent to the path component of the URL for that file.\n\nIf blank, defaults to ./dist."
+        },
+        "Production": {
+          "properties": {
+            "URL": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "URL"
+          ]
+        },
+        "Known": {
+          "properties": {
+            "URIs": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "URIs"
+          ],
+          "description": "Known helps the generated site follow the \"Cool URIs don't change\" rule by remembering certain facts about what the site looks like, and checking newly-generated sites against that memory."
+        },
+        "Name": {
+          "type": "string",
+          "description": "Name is the name of the website. This is used in various places in and out of templates."
+        },
+        "Since": {
+          "type": "integer",
+          "description": "Since is the year the website was established, whether through Winter or otherwise. This is used as metadata for the RSS feed.\n\nTODO: Use this for copyright in page footer"
+        },
+        "Src": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "description": "Src is an additional list of directories to search for source files beyond ./src."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "Author",
+        "Debug",
+        "Development",
+        "Description",
+        "Dist",
+        "Production",
+        "Known",
+        "Name",
+        "Since",
+        "Src"
+      ],
+      "description": "Config is a configuration for the Winter build."
+    }
+  }
+}

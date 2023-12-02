@@ -34,6 +34,6 @@ func Sprintf(format string, args ...any) string {
 	format = fmt.Sprintf(format, args...)
 	format = dedent.Dedent(format)
 	format = strings.TrimSpace(format)
-	format = string(markdown.Render(format, 80, 6))
+	format = string(markdown.Render(format, 80, 0))
 	return format
 }

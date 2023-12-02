@@ -15,8 +15,6 @@ import (
 //go:embed all:defaults
 var defaults embed.FS
 
-//go:generate
-
 func newInitCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
