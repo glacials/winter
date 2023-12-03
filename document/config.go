@@ -117,8 +117,8 @@ func InteractiveConfig() error {
 		return err
 	}
 	var c Config
-	c.Author.Name = cliutils.MustAsk("Author name:")
-	c.Author.Email = cliutils.MustAsk("Author email:")
+	c.Author.Name = cliutils.MustAsk("Author name:", "")
+	c.Author.Email = cliutils.MustAsk("Author email:", "")
 	b, err := yaml.Marshal(c)
 	if err != nil {
 		return err

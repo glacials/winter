@@ -9,14 +9,23 @@ import (
 	"strings"
 )
 
+const (
+	NoDefault = "[[twos.dev/winter/cliutils.NoDefault]]"
+)
+
 // Ask writes question to out with a visual treatment indicating a prompt,
-// then returns everything read from in until the next line break.
-// If the input was the empty string, dfault is returned instead.
+// then reads from in until it reads a line break.
+// It returns all text read until the line break (excluding it).
+//
+// If dfault is [NoDefault],
+// when the returned text would be an empty string,
+// the function repeats from the start until the returned text would be nonempty.
+//
+// If dfault is any other string,
+// when the returned text would be an empty string,
+// dfault is returned instead.
 //
 // question is implicitly passed through [Sprintf] for formatting.
-//
-// Ask blocks until said line break.
-// The line break is not included in answer.
 //
 // If using Ask with os.Stdin and os.Stdout and no error is expected,
 // use [MustAsk] instead.
@@ -31,19 +40,27 @@ func Ask(question, dfault string, in io.Reader, out io.Writer) (answer string, e
 	if text == "" {
 		text = dfault
 	}
+	if _, err := out.Write([]byte("\n")); err != nil {
+		return "", err
+	}
 	return text, scanner.Err()
 }
 
 // MustAsk is like Ask but panics on error and always interacts with stdin/stdout.
 //
-// It writes question to stdout with a visual treatment indicating a prompt,
-// then returns everything read from stdin until the next line break.
-// If the input was the empty string, dfault is returned instead.
+// MustAsk writes question to stdout with a visual treatment indicating a prompt,
+// then reads from stdin until it reads a line break.
+// It returns all text read until the line break (excluding it).
+//
+// If dfault is [NoDefault],
+// when the returned text would be an empty string,
+// the function repeats from the start until the returned text would be nonempty.
+//
+// If dfault is any other string,
+// when the returned text would be an empty string,
+// dfault is returned instead.
 //
 // question is implicitly passed through [Sprintf] for formatting.
-//
-// MustAsk blocks until said line break.
-// The line break is not included in answer.
 //
 // If any issue occurs, MustAsk panics.
 // To handle errors or use other readers or writers,
