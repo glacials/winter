@@ -27,8 +27,6 @@ require (
 
 require (
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
-	github.com/alecthomas/colour v0.1.0 // indirect
-	github.com/alecthomas/repr v0.0.0-20210801044451-80ca428c5142 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
 	github.com/fatih/color v1.9.0 // indirect
@@ -38,13 +36,12 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-runewidth v0.0.12 // indirect
 	github.com/rivo/uniseg v0.1.0 // indirect
-	github.com/sergi/go-diff v1.2.0 // indirect
+	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
 	github.com/MichaelMure/go-term-markdown v0.1.4
-	github.com/alecthomas/assert v1.0.0
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.10.0 // indirect
