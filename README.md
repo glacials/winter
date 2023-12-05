@@ -11,26 +11,28 @@ It has three principles:
    When you tell Winter a page is done,
    it gains permanent failsafes to prevent future breakage.
    Winter is built for content that will last decades.
-3. **Good content is portable content.**
-   Winter can produce pages from Markdown, Org, or HTML.
-   It adds a few conveniences but all of them are human-readable when not rendered,
-   making it easy to switch generators.
-4. **Understand content.**
+3. **Good content is portable.**
+   Winter is anti-lock-in.
+   Source documents are Markdown, Org, or HTML.
+   Winter-specific "syntax" degrades gracefully into human-readable text.
+3. **Understand content.**
    Winter is not just a markup parser and renderer.
    It traverses ASTs to introduce visual treatments
    without introducing any syntax on top of Markdown or Org.
 
 Winter has only two strict rules:
 
-1. **All web paths end in `.html` (except `/`).**
-   This ensures you can always serve your content from any dumb fileserver,
+1. **Web paths end in `.html`.**
+   This ensures you can easily migrate old pages to any dumb fileserver without breaking links,
    even if Winter itself is dead and gone.
    Winter performs this enforcement for you.
-3. **All pages are top-level**.
-   Shuffling pages and links between subdirectories is wrought with chances to break something.
-   Winter removes this problem from your plate by allowing any directory tree in `src/` to turn into a flat directory tree in `dist`/.
+3. **All pages are top-level.**
+   Shuffling users up and down directory trees creates opportunities for links to invisibly break.
+   You can organize `src` however you want,
+   but Winter will always flatten it when producing `dist`
+   (and error on conflicts).
 
-## Installation {#installation}
+## Installation
 
 ```sh
 # CLI
@@ -41,13 +43,13 @@ winter --help
 go get -u twos.dev/winter@latest
 ```
 
-## Documentation {#documentation}
+## Documentation
 
 This section details the `winter` CLI documentation. For Go library
 documentation, see
 [pkg.go.dev/twos.dev/winter](https://pkg.go.dev/twos.dev/winter).
 
-### Directory Structure {#layout}
+### Directory Structure
 
 - `./src`—Content to be built
   - `./src/cold`—Stable content, optionally [templated](https://pkg.go.dev/text/template)
@@ -66,11 +68,11 @@ documentation, see
 - `./public`—Static files to be copied directly to the build directory without processing
 - `./dist`—Build directory
 
-### Commands {#commands}
+### Commands
 
 Pass `--help` to any command to see detailed usage and behavior.
 
-#### `winter init` {#init}
+#### `winter init`
 
 <!-- Don't change manually here. Change `twos.dev/winter/cmd` then paste changes here. -->
 
@@ -80,7 +82,7 @@ Initialize the current directory for use with Winter. The Winter directory
 structure detailed above will be created, and default starting templates will
 be populated so that you have a working `index.html` listing posts.
 
-#### `winter build` {#build}
+#### `winter build`
 
 <!-- Don't change manually here. Change `twos.dev/winter/cmd` then paste changes here. -->
 
@@ -97,7 +99,7 @@ content from `src/img`, and templates from `src/template`. If `--source` is
 specified, Winter will also build text content from that file or directory.
 `--source` can be specified any number of times.
 
-#### `winter freeze` {#freeze}
+#### `winter freeze`
 
 <!-- Don't change manually here. Change `twos.dev/winter/cmd` then paste changes here. -->
 
@@ -106,7 +108,7 @@ Usage: `winter freeze shortname...`
 Freeze all arguments, specified by shortname. This moves the files from
 `src/warm` to `src/cold` and reflects the change in Git.
 
-### Documents {#documents}
+### Documents
 
 A document is an HTML, Markdown, or Org file with optional frontmatter.
 The first level 1 heading
@@ -127,7 +129,7 @@ type: post
 This is an example document.
 ```
 
-### Frontmatter {#frontmatter}
+### Frontmatter
 
 Frontmatter for HTML and Markdown documents is specified in YAML.
 Frontmatter for Org files is specified using Org keywords of
@@ -158,28 +160,28 @@ The same fields are available in Org files:
 
 See below for details of each.
 
-#### `category` {#category}
+#### `category`
 
 The category of the document.
 Accepts any string.
-This is exposed to templates via the [`{ㅤ{ .Category }}`](#cat) field.
+This is exposed to templates via the [`{{ .Category }}`](#cat) field.
 
 The default template set provided by `winter init`
 gives a minor visual treatment to the listing and display of documents with categories.
 
 Otherwise, the category is semantic.
 
-#### `date` {#date}
+#### `date`
 
 Date is the publish date of the document written as `YYYY-MM-DD`.
 It is available to templates as a Go
 [`time.Time`](https://pkg.go.dev/time#Time)
 using
-[`{ㅤ{ .CreatedAt }}`](#createdat).
+[`{{ .CreatedAt }}`](#createdat).
 
 When not set the document will not have a publish date attached to it.
 
-#### `filename` {#filename}
+#### `filename`
 
 Filename specifies the desired final location of the built file in `dist`.
 This must end in `.html` no matter the source document type and must not be in a subdirectory.
@@ -191,9 +193,9 @@ For example, `envy.html.tmpl` and `envy.md` would both become `envy.html`
 (though if two source files would produce the same destination file, Winter will error).
 
 A document's **web path** is defined as its `filename`.
-The web path is accessible to templates using the [`{ㅤ{ .WebPath }}`](#webpath) template variable.
+The web path is accessible to templates using the [`{{ .WebPath }}`](#webpath) template variable.
 
-#### `updated` {#updated}
+#### `updated`
 
 Updated is the date the document was last meaningfully updated,
 if any,
@@ -201,11 +203,11 @@ written as `YYYY-MM-DD`.
 It is available to templates as a Go
 [`time.Time`](https://pkg.go.dev/time#Time)
 using
-[`{ㅤ{ .UpdatedAt }}`](#updatedat).
+[`{{ .UpdatedAt }}`](#updatedat).
 
 When not set the document will not have an update date attached to it.
 
-#### `toc` {#tocprop}
+#### `toc`
 
 Whether to render a table of contents (default `false`).
 If `true`,
@@ -214,7 +216,7 @@ the table of contents will be rendered just before the first level 2 header
 and will list all level 2, 3, and 4 headers.
 See the [top of this page](#toc) for an example.
 
-#### `type` {#type}
+#### `type`
 
 The kind of document. Possible values are `post`, `page`, `draft`.
 
@@ -230,24 +232,24 @@ The default template set provided by `winter init` gives each a different visual
 
 Beyond this, types are only semantic.
 
-### Templates {#templates}
+### Templates
 
 Any file in `./src` can be templated using the format expressed in the
 [`text/template`](https://pkg.go.dev/text/template)
 Go library.
 
-#### Document Fields {#fields}
+#### Document Fields
 
 The following fields are available to templates rendering documents.
 
-##### `{ㅤ{ .Category }}` {#cat}
+##### `{{ .Category }}`
 
 _Type: `string`_
 
 The value specified by the frontmatter [`category`](#category) field.
 This is an arbitrary string.
 
-##### `{ㅤ{ .CreatedAt }}` {#createdat}
+##### `{{ .CreatedAt }}`
 
 _Type: [`time.Time`](https://pkg.go.dev/time#Time)_
 
@@ -260,20 +262,20 @@ This value can be formatted using Go's
 function:
 
 ```template
-{ㅤ{ .CreatedAt.Format "2006 January" }} <!-- Renders 2022 July  -->
-{ㅤ{ .CreatedAt.Format "2006-01-02" }}   <!-- Renders 2022-07-08 -->
+{{ .CreatedAt.Format "2006 January" }} <!-- Renders 2022 July  -->
+{{ .CreatedAt.Format "2006-01-02" }}   <!-- Renders 2022-07-08 -->
 ```
 
-Use `{ㅤ{ .CreatedAt.IsZero }}` to see if the date was not set.
+Use `{{ .CreatedAt.IsZero }}` to see if the date was not set.
 You can use this to hide unset dates:
 
 ```template
-{ㅤ{ if not .CreatedAt.IsZero }}
-  published {ㅤ{ .CreatedAt.Format "2006 January" }}
-{ㅤ{ end }}
+{{ if not .CreatedAt.IsZero }}
+  published {{ .CreatedAt.Format "2006 January" }}
+{{ end }}
 ```
 
-##### `{ㅤ{ .IsType "<string>" }}` {#istype}
+##### `{{ .IsType "<string>" }}`
 
 _Type: `function(string) bool`_
 
@@ -281,21 +283,21 @@ Returns whether the document is of the given type
 (i.e. has frontmatter specifying `type: <string>`).
 See [Types](#types) for valid document types.
 
-##### `{ㅤ{ .Preview }}` {#preview}
+##### `{{ .Preview }}`
 
 _Type: `string`_
 
 A teaser for the document, such as a summary of its contents.
 If unset, one will be inferred from the beginning of the document's content.
 
-##### `{ㅤ{ .Title }}` {#title}
+##### `{{ .Title }}`
 
 _Type: `string`_
 
 The value of the document's first level 1 heading
 (`<h1>` in HTML, `#` in Markdown, `*` in Org).
 
-##### `{ㅤ{ .UpdatedAt }}` {#updatedat}
+##### `{{ .UpdatedAt }}`
 
 _Type: [`time.Time`](https://pkg.go.dev/time#Time)_
 
@@ -305,11 +307,11 @@ as specified by the frontmatter
 attribute.
 
 This value behaves identically to
-[`{ㅤ{ .CreatedAt }}`](#createdat).
+[`{{ .CreatedAt }}`](#createdat).
 For details on dealing with it,
 see that documentation.
 
-##### `{ㅤ{ .WebPath }}` {#webpath}
+##### `{{ .WebPath }}`
 
 _Type: `string`_
 
@@ -320,20 +322,20 @@ preceded with a slash and ending in `.html`.
 
 Equivalent to the file's destination location on disk relative to `dist/`.
 
-#### Functions {#functions}
+#### Functions
 
-##### `posts` {#posts}
+##### `posts`
 
-Usage: `{ㅤ{ range posts }} ... {ㅤ{ end }}`
+Usage: `{{ range posts }} ... {{ end }}`
 
 Returns a list of all documents with type `post`,
 from most to least recent.
 
 See [Document Fields](#fields) for a list of fields available to documents.
 
-##### `yearly` {#yearly}
+##### `yearly`
 
-Usage: `{ㅤ{ range yearly posts }}{ㅤ{ .Year }}: {ㅤ{ range .Documents }} ... {ㅤ{ end }}{ㅤ{ end }}`
+Usage: `{{ range yearly posts }}{{ .Year }}: {{ range .Documents }} ... {{ end }}{{ end }}`
 
 Returns a list of `year` types ordered from most to least recent.
 A `year` has two fields,
