@@ -2,9 +2,6 @@
 
 [![Go Reference](https://pkg.go.dev/badge/twos.dev/winter.svg)](https://pkg.go.dev/twos.dev/winter)
 
-_Note: Winter has not yet been extracted from its birth repository into this one.
-You can find Winter at [github.com/glacials/twos.dev](https://github.com/glacials/twos.dev)._
-
 _Note: Winter is in its early alpha stages. It is not recommended to use Winter for important production content._
 
 Winter is a static website generator for people who can't can't settle on a static website generator.
