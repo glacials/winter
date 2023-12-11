@@ -314,8 +314,11 @@ func (im *img) loadEXIF(r io.Reader) error {
 // but the thumbnails are only regenerated if src has changed since their last generation.
 func (d *img) thumbnails(srcPhoto image.Image, srcPath, dest string) error {
 	p := srcPhoto.Bounds().Size()
-	for width := 1; width < p.X; width *= 2 {
-		height := (width * p.X / p.Y) & -1
+	for height := 1; height < p.X; height *= 2 {
+		width := (height * p.X / p.Y) & -1
+		if width <= 0 || height <= 0 {
+			continue
+		}
 		destPath := filepath.Join(
 			dest,
 			fmt.Sprintf("%s.%dx%d.webp", strings.TrimSuffix(filepath.Base(srcPath), filepath.Ext(srcPath)), width, height),
@@ -335,7 +338,7 @@ func (d *img) thumbnails(srcPhoto image.Image, srcPath, dest string) error {
 			dstPhoto,
 			image.Rectangle{
 				image.Point{0, 0},
-				image.Point{width, width},
+				image.Point{width, height},
 			},
 			srcPhoto,
 			image.Rectangle{image.Point{0, 0}, srcPhoto.Bounds().Size()},
