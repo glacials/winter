@@ -3,6 +3,7 @@ package document // import "twos.dev/winter/document"
 import (
 	"fmt"
 	"io"
+	"sort"
 
 	"golang.org/x/net/html/atom"
 )
@@ -94,16 +95,46 @@ func parseKind(s string) (kind, error) {
 	return -1, fmt.Errorf("unknown kind %q", s)
 }
 
-type documents []Document
-
-func (d documents) Len() int {
-	return len(d)
+// documents is sortable collection of Documents.
+type documents struct {
+	// All is the collection of documents that defines the documents struct.
+	// It is nested in a struct,
+	// rather than directly defining documents,
+	// because non-pointer references to slices cannot have their headers modified
+	// (therefore operationed like append don't propagate back).
+	All []Document
 }
 
-func (d documents) Less(i, j int) bool {
-	return d[i].Metadata().CreatedAt.After(d[j].Metadata().CreatedAt)
+func (d *documents) add(doc Document) {
+	if d.All == nil {
+		d.All = []Document{}
+	}
+	d.All = append(d.All, doc)
 }
 
-func (d documents) Swap(i, j int) {
-	d[i], d[j] = d[j], d[i]
+func (d *documents) addOrUpdate(doc Document) {
+	if d.All == nil {
+		d.All = []Document{}
+	}
+	for i, existing := range d.All {
+		if existing.Metadata().SourcePath == doc.Metadata().SourcePath {
+			d.All[i] = doc
+			// Sort again in case d's creation date changed.
+			sort.Sort(d)
+			return
+		}
+	}
+	d.add(doc)
+}
+
+func (d *documents) Len() int {
+	return len(d.All)
+}
+
+func (d *documents) Less(i, j int) bool {
+	return d.All[i].Metadata().CreatedAt.After(d.All[j].Metadata().CreatedAt)
+}
+
+func (d *documents) Swap(i, j int) {
+	d.All[i], d.All[j] = d.All[j], d.All[i]
 }

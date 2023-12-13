@@ -37,7 +37,7 @@ type TemplateDocument struct {
 	// docs is a reference to the substructure's set of docs.
 	// It should be populated fully before any call to [TemplateDocument.Load],
 	// so that those calls can use the docs function in their [html/template.FuncMap] to discover and list docs.
-	docs []Document
+	docs *documents
 	meta *Metadata
 	next Document
 	// photos is a reference to the substructure's galleries.
@@ -53,7 +53,7 @@ type TemplateDocument struct {
 
 // NewTemplateDocument returns a template document with the given pointers to existing document metadata,
 // substructure docs, and substructure photos.
-func NewTemplateDocument(src string, meta *Metadata, docs []Document, photos map[string][]*img, next Document) *TemplateDocument {
+func NewTemplateDocument(src string, meta *Metadata, docs *documents, photos map[string][]*img, next Document) *TemplateDocument {
 	return &TemplateDocument{
 		deps: map[string]struct{}{
 			src:                {},
@@ -175,7 +175,7 @@ func (doc *TemplateDocument) funcmap(tmplPath string) (template.FuncMap, error) 
 			if doc.meta.ParentFilename == "" {
 				return nil
 			}
-			for _, d := range doc.docs {
+			for _, d := range doc.docs.All {
 				if strings.TrimPrefix(d.Metadata().WebPath, "/") == strings.TrimPrefix(doc.meta.ParentFilename, "/") {
 					return d
 				}
@@ -203,14 +203,14 @@ func (doc *TemplateDocument) galleryFunc(name string) []*img {
 // postsFunc is a function to be used by templates.
 // It retrieves a slice of metadatas for all documents of type post.
 func (doc *TemplateDocument) postsFunc() []Document {
-	posts := make(documents, 0, len(doc.docs))
-	for _, doc := range doc.docs {
+	posts := &documents{All: make([]Document, 0, len(doc.docs.All))}
+	for _, doc := range doc.docs.All {
 		if doc.Metadata().Kind == post {
-			posts = append(posts, doc)
+			posts.add(doc)
 		}
 	}
 	sort.Sort(posts)
-	return posts
+	return posts.All
 }
 
 // render is a function available to templates.
@@ -240,9 +240,9 @@ func yearly(docs []Document) years {
 		}
 		y := doc.Metadata().CreatedAt.Year()
 		if _, ok := groups[y]; !ok {
-			groups[y] = &year{Documents: documents{}, Year: y}
+			groups[y] = &year{Documents: &documents{}, Year: y}
 		}
-		groups[y].Documents = append(groups[y].Documents, doc)
+		groups[y].Documents.add(doc)
 	}
 	yrs := make(years, 0, len(groups))
 	for _, year := range groups {
@@ -308,7 +308,7 @@ func (a years) Swap(i, j int) {
 
 type year struct {
 	Year      int
-	Documents documents
+	Documents *documents
 }
 
 type iconfunc func(graphic.SRC, graphic.Alt) (template.HTML, error)

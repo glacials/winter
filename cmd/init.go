@@ -1,7 +1,6 @@
 package cmd // import "twos.dev/winter/cmd"
 
 import (
-	"embed"
 	"errors"
 	"fmt"
 	"os"
@@ -10,9 +9,6 @@ import (
 	"github.com/spf13/cobra"
 	"twos.dev/winter/cliutils"
 )
-
-//go:embed all:defaults
-var defaults embed.FS
 
 func newInitCmd() *cobra.Command {
 	cmd := &cobra.Command{

@@ -41,7 +41,7 @@ func (s *Substructure) writefeed() error {
 	atomFeed := (&feeds.Atom{Feed: &feed}).AtomFeed()
 	atomFeed.Icon = (&url.URL{Scheme: "https", Host: s.cfg.Production.URL, Path: favicon}).String()
 
-	for _, doc := range s.docs {
+	for _, doc := range s.docs.All {
 		if doc.Metadata().Kind != post {
 			continue
 		}

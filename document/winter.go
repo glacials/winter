@@ -200,7 +200,7 @@ type Substructure struct {
 	// devURL is [twos.dev/winter.Substructure.cfg.Development.URL] unmarshaled into a [net/url.URL].
 	devURL *url.URL
 	// docs holds the documents known to the substructure.
-	docs documents
+	docs *documents
 	// galleries is a map of gallery name to slice of galleries in that gallery.
 	galleries map[string][]*img
 }
@@ -216,6 +216,7 @@ func NewSubstructure(cfg Config) (*Substructure, error) {
 	s := Substructure{
 		cfg:    cfg,
 		devURL: devURL,
+		docs:   &documents{},
 	}
 	return &s, s.discover()
 }
@@ -253,7 +254,7 @@ func (s *Substructure) Build(doc Document) error {
 //
 // If no such document exists, ok is false.
 func (s *Substructure) DocBySourcePath(path string) (doc Document, ok bool) {
-	for _, doc := range s.docs {
+	for _, doc := range s.docs.All {
 		if filepath.Clean(doc.Metadata().SourcePath) == filepath.Clean(path) {
 			return doc, true
 		}
@@ -312,7 +313,7 @@ func (s *Substructure) ExecuteAll(dist string) error {
 		}
 	}
 	builtDocs := map[string]Document{}
-	for _, doc := range s.docs {
+	for _, doc := range s.docs.All {
 		if prev, ok := builtDocs[doc.Metadata().WebPath]; ok {
 			return fmt.Errorf(
 				"both %s (%T) and %s (%T) wanted to build to %s/%s; remove one",
@@ -351,8 +352,13 @@ func (s *Substructure) Rebuild(src string) error {
 		if err := s.Build(doc); err != nil {
 			return fmt.Errorf("cannot retrieve doc at %q: %w", src, err)
 		}
+	} else {
+		fmt.Printf("  + Tracking new file.\n")
+		if err := s.discoverAtPath(src); err != nil {
+			return fmt.Errorf("cannot add document to in-flight substructure: %w", err)
+		}
 	}
-	for _, doc := range s.docs {
+	for _, doc := range s.docs.All {
 		if doc.DependsOn(src) {
 			if err := s.Build(doc); err != nil {
 				return fmt.Errorf("cannot build %q (dependent of %q): %w", doc.Metadata().SourcePath, src, err)
@@ -365,17 +371,7 @@ func (s *Substructure) Rebuild(src string) error {
 // add adds the given document to the substructure,
 // removing any old versions in the process.
 func (s *Substructure) add(doc Document) {
-	// dedupe
-	for i, d := range s.docs {
-		if d.Metadata().SourcePath == doc.Metadata().SourcePath {
-			s.docs[i] = doc
-			// Sort again in case d's creation date changed.
-			sort.Sort(s.docs)
-			return
-		}
-	}
-	s.docs = append(s.docs, doc)
-	sort.Sort(s.docs)
+	s.docs.addOrUpdate(doc)
 }
 
 // addIMG adds the given image to the substructure,
@@ -437,13 +433,6 @@ func (s *Substructure) discoverAtPath(path string) error {
 // discoverGalleries adds all documents matching galleryGlobs in or at the given path glob to the substructure.
 func (s *Substructure) discoverGalleries(src string) error {
 	log.Println("Discovering galleries.")
-	stat, err := os.Stat(src)
-	if err != nil {
-		return fmt.Errorf("cannot discovery galleries at %q: %w", src, err)
-	}
-	if !stat.IsDir() {
-		return fmt.Errorf("discoverGalleriesAtPath expects a directory, but got a file: %q", src)
-	}
 
 	var files []string
 	for _, g := range galleryGlobs {
@@ -499,7 +488,7 @@ func (s *Substructure) discoverHTML(path string) error {
 			),
 		)
 	}
-	for _, d := range s.docs {
+	for _, d := range s.docs.All {
 		if p, _, ok := strings.Cut(d.Metadata().WebPath, "_"); ok {
 			parent, ok := s.DocBySourcePath(p)
 			if ok {
@@ -655,7 +644,7 @@ func (s *Substructure) discoverTemplates(path string) error {
 			),
 		)
 	}
-	for _, d := range s.docs {
+	for _, d := range s.docs.All {
 		if p, _, ok := strings.Cut(d.Metadata().WebPath, "_"); ok {
 			parent, ok := s.DocBySourcePath(p)
 			if ok {
