@@ -11,7 +11,7 @@ It has three principles:
    When you tell Winter a page is done,
    it gains permanent failsafes to prevent future breakage.
    Winter is built for content that will last decades.
-3. **Good content is portable.**
+2. **Good content is portable.**
    Winter is anti-lock-in.
    Source documents are Markdown, Org, or HTML.
    Winter-specific "syntax" degrades gracefully into human-readable text.
@@ -26,7 +26,7 @@ Winter has only two strict rules:
    This ensures you can easily migrate old pages to any dumb fileserver without breaking links,
    even if Winter itself is dead and gone.
    Winter performs this enforcement for you.
-3. **All pages are top-level.**
+2. **All pages are top-level.**
    Shuffling users up and down directory trees creates opportunities for links to invisibly break.
    You can organize `src` however you want,
    but Winter will always flatten it when producing `dist`
@@ -275,6 +275,13 @@ You can use this to hide unset dates:
 {{ end }}
 ```
 
+##### `{{ .Documents.All }}`
+
+_Type: `[]Document`_
+
+All documents Winter knows about,
+ordered by creation date descending.
+
 ##### `{{ .IsType "<string>" }}`
 
 _Type: `function(string) bool`_
@@ -335,7 +342,7 @@ See [Document Fields](#fields) for a list of fields available to documents.
 
 ##### `yearly`
 
-Usage: `{{ range yearly posts }}{{ .Year }}: {{ range .Documents }} ... {{ end }}{{ end }}`
+Usage: `{{ range yearly posts }}{{ .Year }}: {{ range .Documents.All }} ... {{ end }}{{ end }}`
 
 Returns a list of `year` types ordered from most to least recent.
 A `year` has two fields,
