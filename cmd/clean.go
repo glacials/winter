@@ -2,6 +2,7 @@ package cmd // import "twos.dev/winter/cmd"
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/adrg/xdg"
@@ -10,7 +11,7 @@ import (
 	"twos.dev/winter/document"
 )
 
-func newCleanCmd() *cobra.Command {
+func newCleanCmd(logger *slog.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "clean",
 		Short: "Purge the Winter cache",

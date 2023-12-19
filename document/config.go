@@ -44,18 +44,10 @@ type Config struct {
 	// is equivalent to the path component of the URL for that file.
 	//
 	// If blank, defaults to ./dist.
-	Dist       string `yaml:"dist,omitempty"`
-	Production struct {
-		// URL is the base URL you will connect to to view your deployed website
-		// (e.g. twos.dev or one.twos.dev or twos.dev:6667).
-		// This is used in various backlinks, like those in the RSS feed.
-		//
-		// Must not be blank.
-		URL string `yaml:"url,omitempty"`
-	} `yaml:"production,omitempty"`
+	Dist string `yaml:"dist,omitempty"`
 	// Known helps the generated site follow the "Cool URIs don't change" rule
 	// by remembering certain facts about what the site looks like,
-	// and checking newly-generated sites against that memory.
+	// and checking newly-generated sites against those facts.
 	Known struct {
 		// URIs holds the path to the known URIs file,
 		// which Winter will generate, update, and maintain.
@@ -68,20 +60,65 @@ type Config struct {
 	// Name is the name of the website.
 	// This is used in various places in and out of templates.
 	Name string `yaml:"name,omitempty"`
-	// Since is the year the website was established, whether through Winter or otherwise.
-	// This is used as metadata for the RSS feed.
+	// Gear is an array of Gear objects,
+	// each describing a camera, lens, or other piece of gear
+	// whose information can be extracted from EXIF data.
 	//
-	// TODO: Use this for copyright in page footer
+	// Gear is used by Winter when processing photos to display photograph information,
+	// and provide links to purchase gear used in its creation.
+	Gear       []Gear `yaml:"gear,omitempty"`
+	Production struct {
+		// URL is the base URL you will connect to to view your deployed website
+		// (e.g. twos.dev or one.twos.dev or twos.dev:6667).
+		// This is used in various backlinks, like those in the RSS feed.
+		//
+		// Must not be blank.
+		URL string `yaml:"url,omitempty"`
+	} `yaml:"production,omitempty"`
+	// Since is the year the website was established,
+	// whether through Winter or otherwise.
+	// This is used as metadata for the RSS feed,
+	// and as a copyright notice when needed.
 	Since int `yaml:"since,omitempty"`
 	// Src is an additional list of directories to search for source files beyond ./src.
 	Src []string `yaml:"srca,omitempty"`
 }
 
-func NewConfig() (Config, error) {
+type Gear struct {
+	// Make is the user-readable brand that created this piece of gear.
+	Make string `yaml:"make,omitempty"`
+	// Model is the user-readable model for this piece of gear.
+	Model string `yaml:"model,omitempty"`
+	// Link is a URL
+	// (beginning in https://)
+	// at which a user can purchase or read more about this piece of gear.
+	Link string `yaml:"link,omitempty"`
+	// EXIF specifies what EXIF data a photograph must have in order to be identified as having been taken with this piece of gear.
+	EXIF struct {
+		// Make is the value a photograph's EXIF data must have in the "make" field,
+		// whether camera or lens,
+		// for the photograph to be considered as having been taken with this piece of gear.
+		//
+		// Before comparison,
+		// Winter will strip all trailing and leading spaces from both the EXIF data field and from this field.
+		// Then, a case-insensitive comparison is performed.
+		Make string `yaml:"make,omitempty"`
+		// Make is the value a photograph's EXIF data must have in the "model" field,
+		// whether camera or lens,
+		// for the photograph to be considered as having been taken with this piece of gear.
+		//
+		// Before comparison,
+		// Winter will strip all trailing and leading spaces from both the EXIF data field and from this field.
+		// Then, a case-insensitive comparison is performed.
+		Model string `yaml:"model,omitempty"`
+	} `yaml:"exif,omitempty"`
+}
+
+func NewConfig() (*Config, error) {
 	var c Config
 	p, err := ConfigPath()
 	if err != nil {
-		return Config{}, err
+		return nil, err
 	}
 	f, err := os.ReadFile(p)
 	if err != nil {
@@ -90,21 +127,55 @@ func NewConfig() (Config, error) {
 		}
 	}
 	if err := yaml.Unmarshal(f, &c); err != nil {
-		return Config{}, err
+		return nil, err
 	}
 	if c.Development.URL == "" {
 		c.Development.URL = "http://localhost:8100"
 	}
 	if c.Production.URL == "" {
-		return Config{}, fmt.Errorf("production.url must be specified in winter.yml")
+		return nil, fmt.Errorf("production.url must be specified in winter.yml")
 	}
 	if c.Known.URIs == "" {
 		c.Known.URIs = "src/uris.txt"
 	}
+	for _, g := range c.Gear {
+		if g.Make == "" {
+			return nil, fmt.Errorf("winter.yml: gear item with model=%q must have `make` attribute", g.Model)
+		}
+		if g.Model == "" {
+			return nil, fmt.Errorf("winter.yml: gear item with make=%q must have `model` attribute", g.Make)
+		}
+		if g.Link == "" {
+			return nil, fmt.Errorf("winter.yml: gear item with make=%q and model=%q must have `link` attribute, pointing to a web page for the gear item", g.Make, g.Model)
+		}
+	}
 	for i := range c.Src {
 		c.Src[i] = os.ExpandEnv(strings.ReplaceAll(c.Src[i], "~", "$HOME"))
 	}
-	return c, nil
+	return &c, nil
+}
+
+// GearByString returns the Gear item for the given make and model EXIF tag values.
+// If none could be found, ok is false.
+func (c *Config) GearByString(make, model string) (g *Gear, ok bool) {
+	for _, gear := range c.Gear {
+		if strings.EqualFold(gear.EXIF.Make, make) && strings.EqualFold(gear.EXIF.Model, model) {
+			return &gear, true
+		}
+	}
+	return nil, false
+}
+
+func (c *Config) Save() error {
+	bytes, err := yaml.Marshal(c)
+	if err != nil {
+		return err
+	}
+	p, err := ConfigPath()
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(p, bytes, fs.FileMode(os.O_WRONLY))
 }
 
 func InteractiveConfig() error {
@@ -127,18 +198,6 @@ func InteractiveConfig() error {
 		return err
 	}
 	return nil
-}
-
-func (c Config) Save() error {
-	bytes, err := yaml.Marshal(c)
-	if err != nil {
-		return err
-	}
-	p, err := ConfigPath()
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(p, bytes, fs.FileMode(os.O_WRONLY))
 }
 
 func ConfigPath() (string, error) {

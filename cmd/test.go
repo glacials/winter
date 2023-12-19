@@ -3,6 +3,7 @@ package cmd // import "twos.dev/winter/cmd"
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -10,7 +11,7 @@ import (
 	"twos.dev/winter/cliutils"
 )
 
-func newTestCmd() *cobra.Command {
+func newTestCmd(logger *slog.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "test <environment>",
 		Short: "Run site-specific integration tests",

@@ -17,12 +17,8 @@ import (
 	"github.com/nickalie/go-webpbin"
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/mknote"
+	"github.com/rwcarlsen/goexif/tiff"
 	"golang.org/x/image/draw"
-)
-
-const (
-	Canon   = "Canon"
-	Olympus = "Olympus"
 )
 
 type EXIF struct {
@@ -38,35 +34,6 @@ type EXIF struct {
 	TakenAt      time.Time
 }
 
-type Gear struct {
-	Link  string
-	Make  string
-	Model string
-}
-
-// gear is a mapping of makes to models to details.
-var gear = map[string]map[string]*Gear{
-	"Canon": {
-		"Canon EOS Rebel T6": {
-			Link:  "https://amzn.to/3MWZLUy",
-			Make:  Canon,
-			Model: "EOS Rebel T6",
-		},
-		"Canon EOS Rebel T7": {
-			Link:  "https://amzn.to/3uoMmOJ",
-			Make:  Canon,
-			Model: "EOS Rebel T7",
-		},
-	},
-	"OLYMPUS CORPORATION": {
-		"E-M5MarkIII": {
-			Link:  "https://amzn.to/47nR3a9",
-			Make:  Olympus,
-			Model: "OM-D E-M5 Mark III",
-		},
-	},
-}
-
 type img struct {
 	EXIF
 
@@ -78,7 +45,7 @@ type img struct {
 	// WebPath is the path component of the URL to the image as it will exist after building.
 	WebPath string
 
-	cfg Config
+	cfg *Config
 }
 
 type thumbnail struct {
@@ -102,7 +69,7 @@ func (t thumbnails) Swap(i, j int) {
 
 // NewIMG returns a struct that represents an image to be built.
 // The returned value implements [Document].
-func NewIMG(src string, cfg Config) (*img, error) {
+func NewIMG(src string, cfg *Config) (*img, error) {
 	relpath, err := filepath.Rel("src", src)
 	if err != nil {
 		return nil, fmt.Errorf("can't get relpath for photo `%s`: %w", src, err)
@@ -244,7 +211,7 @@ func (im *img) loadEXIF(r io.Reader) error {
 	if err != nil {
 		return fmt.Errorf("cannot read exif data: %w", err)
 	}
-	camera, err := findGear(x, exif.Make, exif.Model)
+	camera, err := im.findGear(x, exif.Make, exif.Model)
 	if err != nil {
 		return fmt.Errorf("cannot get camera: %w", err)
 	}
@@ -264,7 +231,7 @@ func (im *img) loadEXIF(r io.Reader) error {
 	if err != nil {
 		return fmt.Errorf("cannot get ISO: %w", err)
 	}
-	lens, err := findGear(x, exif.LensMake, exif.LensModel)
+	lens, err := im.findGear(x, exif.LensMake, exif.LensModel)
 	if err != nil {
 		return fmt.Errorf("cannot get lens: %w", err)
 	}
@@ -373,33 +340,46 @@ func (d *img) thumbnails(srcPhoto image.Image, srcPath, dest string) error {
 }
 
 // findGear returns a Gear built from the given EXIF data.
+//
 // If the EXIF data contains no or insufficient info,
 // (nil, nil) is returned.
-func findGear(x *exif.Exif, make, model exif.FieldName) (*Gear, error) {
+//
+// If the EXIF data is present but winter.yml does not index it,
+// an error is returned.
+func (im *img) findGear(x *exif.Exif, make, model exif.FieldName) (*Gear, error) {
 	gearMake, err := x.Get(make)
 	if err != nil {
-		if !errors.Is(err, exif.TagNotPresentError(make)) {
-			return nil, fmt.Errorf("can't get gear make: %w", err)
+		if errors.Is(err, exif.TagNotPresentError(make)) {
+			return nil, nil
 		}
-		return nil, nil
+		return nil, fmt.Errorf("can't get gear make: %w", err)
 	}
 	gearModel, err := x.Get(model)
 	if err != nil {
-		if !errors.Is(err, exif.TagNotPresentError(model)) {
-			return nil, fmt.Errorf("can't get gear model: %w", err)
+		if errors.Is(err, exif.TagNotPresentError(model)) {
+			return nil, nil
 		}
-		return nil, nil
+		return nil, fmt.Errorf("can't get gear model: %w", err)
 	}
-	cutset := " \""
-	gearMakeStr := strings.Trim(gearMake.String(), cutset)
-	models, ok := gear[gearMakeStr]
+	gearMakeStr := sanitizeEXIFField(gearMake)
+	gearModelStr := sanitizeEXIFField(gearModel)
+	g, ok := im.cfg.GearByString(gearMakeStr, gearModelStr)
 	if !ok {
-		return nil, fmt.Errorf("unknown gear make %q", gearMakeStr)
+		return nil, fmt.Errorf("no such gear with make=%q and model=%q", gearMakeStr, gearModelStr)
 	}
-	gearModelStr := strings.Trim(gearModel.String(), cutset)
-	gearItem, ok := models[gearModelStr]
-	if !ok {
-		return nil, fmt.Errorf("unknown gear model %q", gearModelStr)
-	}
-	return gearItem, nil
+	return g, nil
+}
+
+// exifCutSet is a string containing all the individual characters,
+// in no specific order,
+// that should be cut from both ends of an EXIF field before processing it.
+const exifCutSet = " \""
+
+// sanitizeEXIFField pulls the value out of the given EXIF field,
+// strips whitespace and quotes from its ends,
+// and returns the result.
+func sanitizeEXIFField(field *tiff.Tag) string {
+	fieldVal := field.String()
+	fieldVal = strings.Trim(fieldVal, exifCutSet)
+	return fieldVal
 }

@@ -137,7 +137,7 @@ package document // import "twos.dev/winter/document"
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -201,19 +201,20 @@ func (err ErrNotTracked) Error() string {
 // Substructure is a graph of documents on the website.
 type Substructure struct {
 	// cfg holds user preferences, specified by winter.yml.
-	cfg Config
+	cfg *Config
 	// devURL is [twos.dev/winter.Substructure.cfg.Development.URL] unmarshaled into a [net/url.URL].
 	devURL *url.URL
 	// docs holds the documents known to the substructure.
 	docs *documents
 	// galleries is a map of gallery name to slice of galleries in that gallery.
 	galleries map[string][]*img
+	logger    *slog.Logger
 }
 
 // NewSubstructure returns a substructure with the given configuration.
 // Upon initialization, a substructure is the result of a discovery phase of content on the filesystem.
 // Further calls are needed to build the full graph of content and render it to HTML.
-func NewSubstructure(cfg Config) (*Substructure, error) {
+func NewSubstructure(logger *slog.Logger, cfg *Config) (*Substructure, error) {
 	devURL, err := url.Parse(cfg.Development.URL)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse config development.url %q: %w", cfg.Development.URL, err)
@@ -222,6 +223,7 @@ func NewSubstructure(cfg Config) (*Substructure, error) {
 		cfg:    cfg,
 		devURL: devURL,
 		docs:   &documents{},
+		logger: logger,
 	}
 	return &s, s.discover()
 }
@@ -239,7 +241,7 @@ func (s *Substructure) Build(doc Document) error {
 		return fmt.Errorf("cannot load %q for building %q: %w", doc.Metadata().SourcePath, doc.Metadata().Title, err)
 	}
 	dest := filepath.Join(s.cfg.Dist, doc.Metadata().WebPath)
-	fmt.Printf("  → %s", pad(dest))
+	s.logger.Debug(fmt.Sprintf("  → %s", pad(dest)))
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return fmt.Errorf("cannot make directory structure for %q: %w", dest, err)
 	}
@@ -251,7 +253,7 @@ func (s *Substructure) Build(doc Document) error {
 	if err := doc.Render(w); err != nil {
 		return fmt.Errorf("cannot render %q for building: %w", doc.Metadata().SourcePath, err)
 	}
-	fmt.Println(" ✓")
+	s.logger.Debug(" ✓")
 	return nil
 }
 
@@ -352,13 +354,13 @@ func (s *Substructure) ExecuteAll(dist string) error {
 //
 // If src isn't known to the substructure, Rebuild no-ops and returns no error.
 func (s *Substructure) Rebuild(src string) error {
-	fmt.Printf("%s ↓\n", src)
+	s.logger.Debug(fmt.Sprintf("%s ↓\n", src))
 	if doc, ok := s.DocBySourcePath(src); ok {
 		if err := s.Build(doc); err != nil {
 			return fmt.Errorf("cannot retrieve doc at %q: %w", src, err)
 		}
 	} else {
-		fmt.Printf("  + Tracking new file.\n")
+		s.logger.Debug("  + Tracking new file.\n")
 		if err := s.discoverAtPath(src); err != nil {
 			return fmt.Errorf("cannot add document to in-flight substructure: %w", err)
 		}
@@ -396,7 +398,7 @@ func (s *Substructure) addIMG(im *img) error {
 
 // discover clears the substructure of any known documents and discovers all documents from scratch on the filesystem.
 func (s *Substructure) discover() error {
-	log.Println("Starting discovery.")
+	s.logger.Debug("Starting discovery.")
 	paths := append(s.cfg.Src, "src")
 	for _, path := range paths {
 		if err := s.discoverAtPath(path); err != nil {
@@ -450,7 +452,7 @@ func (s *Substructure) discoverGalleries(src string) error {
 		if shouldIgnore(src) {
 			return nil
 		}
-		log.Printf("+ %s\n", src)
+		s.logger.Debug(fmt.Sprintf("+ %s\n", src))
 		im, err := NewIMG(src, s.cfg)
 		if err != nil {
 			return fmt.Errorf("cannot create gallery document from %s: %w", src, err)
@@ -486,7 +488,7 @@ func (s *Substructure) discoverHTML(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
-		log.Printf("+ %s\n", src)
+		s.logger.Debug(fmt.Sprintf("+ %s\n", src))
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewHTMLDocument(src, meta,
@@ -526,7 +528,7 @@ func (s *Substructure) discoverMarkdown(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
-		log.Printf("+ %s\n", src)
+		s.logger.Debug(fmt.Sprintf("+ %s\n", src))
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewMarkdownDocument(src, meta,
@@ -562,7 +564,7 @@ func (s *Substructure) discoverOrg(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
-		log.Printf("+ %s\n", src)
+		s.logger.Debug(fmt.Sprintf("+ %s\n", src))
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewOrgDocument(src, meta,
@@ -611,7 +613,7 @@ func (s *Substructure) discoverStatic(path string) error {
 		} else if stat.IsDir() {
 			continue
 		}
-		log.Printf("+ %s\n", src)
+		s.logger.Debug(fmt.Sprintf("+ %s\n", src))
 		webPath, err := filepath.Rel(path, src)
 		if err != nil {
 			return fmt.Errorf("cannot determine desired web path of %q: %w", src, err)
@@ -643,7 +645,7 @@ func (s *Substructure) discoverTemplates(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
-		log.Printf("+ %s\n", src)
+		s.logger.Debug(fmt.Sprintf("+ %s\n", src))
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewHTMLDocument(src, meta,

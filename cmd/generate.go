@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"regexp"
 
@@ -14,7 +15,7 @@ import (
 	"twos.dev/winter/document"
 )
 
-func newGenerateCommand() *cobra.Command {
+func newGenerateCommand(logger *slog.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "generate",
 		Short: "Generate internal Winter code",

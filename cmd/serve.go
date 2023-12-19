@@ -1,14 +1,16 @@
 package cmd // import "twos.dev/winter/cmd"
 
 import (
+	"log/slog"
+
 	"github.com/spf13/cobra"
 	"twos.dev/winter/cliutils"
 )
 
-func newServeCmd() *cobra.Command {
+func newServeCmd(logger *slog.Logger) *cobra.Command {
 	return &cobra.Command{
 		Use:   "serve",
-		Short: "Alias of build --serve",
+		Short: cliutils.Sprintf("Alias of `winter build --serve`"),
 		Long: cliutils.Sprintf(`
 			Build, serve, and continually rebuild the website.
 
@@ -24,7 +26,7 @@ func newServeCmd() *cobra.Command {
 			along with any related page that may have changed as a result.
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			buildCmd := newBuildCmd()
+			buildCmd := newBuildCmd(logger)
 			if err := buildCmd.Flag(serveFlag).Value.Set("true"); err != nil {
 				return err
 			}

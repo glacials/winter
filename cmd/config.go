@@ -2,6 +2,7 @@ package cmd // import "twos.dev/winter/cmd"
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/mitchellh/mapstructure"
@@ -11,25 +12,29 @@ import (
 	"twos.dev/winter/document"
 )
 
-func newConfigCmd() *cobra.Command {
+func newConfigCmd(logger *slog.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Interact with Winter configuration",
 		Long: cliutils.Sprintf(`
-			Interact with Winter configuration.
+			Interact with Winter configuration for the project in the current directory.
 
-			Configuration in ./winter.yml takes first precedence.
+			Configuration in ` + "`" + `./winter.yml` + "`" + ` takes first precedence.
 			Otherwise, configuration is stored according to the XDG spec.
-			This is typically
+			On Linux, this is generally:
 
-			    ~/.config/winter/winter.yml
+			` + "```" + `
+			~/.config/winter/winter.yml
+			` + "```" + `
 
-			on Linux and
+			On macOS, this is generally:
 
-			    ~/Library/Application Support/winter/winter.yml
+			` + "```" + `
+			~/Library/Application Support/winter/winter.yml
+			` + "```" + `
 
-			on macOS. For more information on possible locations, see the XDG specification:
-			https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+			For more information on config locations, see the
+			[XDG specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html).
 		`),
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -3,6 +3,7 @@ package cmd // import "twos.dev/winter/cmd"
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -10,10 +11,10 @@ import (
 	"twos.dev/winter/cliutils"
 )
 
-func newInitCmd() *cobra.Command {
+func newInitCmd(logger *slog.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init [DIR]",
-		Short: "Start a Winter project",
+		Short: "Start a new Winter project",
 		Long: cliutils.Sprintf(`
 			Initialize a new Winter project by generating a fresh winter.yml.
 

@@ -3,6 +3,7 @@ package cmd // import "twos.dev/winter/cmd"
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -16,7 +17,7 @@ const (
 	KnownURLsPath = "src/urls.txt"
 )
 
-func newFreezeCmd() *cobra.Command {
+func newFreezeCmd(logger *slog.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "freeze [shortname...]",
 		Short: "Turn a warm file cold",
@@ -55,7 +56,7 @@ func newFreezeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			s, err := document.NewSubstructure(cfg)
+			s, err := document.NewSubstructure(logger, cfg)
 			if err != nil {
 				return err
 			}
