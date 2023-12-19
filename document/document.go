@@ -101,7 +101,7 @@ type documents struct {
 	// It is nested in a struct,
 	// rather than directly defining documents,
 	// because non-pointer references to slices cannot have their headers modified
-	// (therefore operationed like append don't propagate back).
+	// (therefore operations like append don't propagate back).
 	All []Document
 }
 

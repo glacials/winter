@@ -150,6 +150,11 @@ import (
 
 const (
 	AppName = "winter"
+
+	htmlSuffix     = ".html"
+	markdownSuffix = ".md"
+	orgSuffix      = ".org"
+	templateSuffix = ".html.tmpl"
 )
 
 var (
@@ -327,7 +332,7 @@ func (s *Substructure) ExecuteAll(dist string) error {
 		}
 		if err := s.Rebuild(doc.Metadata().SourcePath); err != nil {
 			return fmt.Errorf(
-				"cannot execute %q during ExecuteAll: %w",
+				"cannot rebuild %q during ExecuteAll: %w",
 				doc.Metadata().SourcePath,
 				err,
 			)
@@ -359,7 +364,7 @@ func (s *Substructure) Rebuild(src string) error {
 		}
 	}
 	for _, doc := range s.docs.All {
-		if doc.DependsOn(src) {
+		if doc.DependsOn(src) && doc.Metadata().SourcePath != src {
 			if err := s.Build(doc); err != nil {
 				return fmt.Errorf("cannot build %q (dependent of %q): %w", doc.Metadata().SourcePath, src, err)
 			}
@@ -432,8 +437,6 @@ func (s *Substructure) discoverAtPath(path string) error {
 
 // discoverGalleries adds all documents matching galleryGlobs in or at the given path glob to the substructure.
 func (s *Substructure) discoverGalleries(src string) error {
-	log.Println("Discovering galleries.")
-
 	var files []string
 	for _, g := range galleryGlobs {
 		f, err := filepathx.Glob(filepath.Join(src, g))
@@ -447,6 +450,7 @@ func (s *Substructure) discoverGalleries(src string) error {
 		if shouldIgnore(src) {
 			return nil
 		}
+		log.Printf("+ %s\n", src)
 		im, err := NewIMG(src, s.cfg)
 		if err != nil {
 			return fmt.Errorf("cannot create gallery document from %s: %w", src, err)
@@ -461,26 +465,28 @@ func (s *Substructure) discoverGalleries(src string) error {
 
 // discoverHTML adds all *.html documents in or at the given path glob to the substructure.
 func (s *Substructure) discoverHTML(path string) error {
-	log.Println("Discovering HTML.")
 	var htmlFiles []string
 	if stat, err := os.Stat(path); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
 	} else if stat.IsDir() {
-		htmlf, err := filepathx.Glob(filepath.Join(path, "**", "*.html"))
+		htmlf, err := filepathx.Glob(filepath.Join(path, "**", fmt.Sprintf("*%s", htmlSuffix)))
 		if err != nil {
 			return err
 		}
 		htmlFiles = append(htmlFiles, htmlf...)
-	} else if strings.HasSuffix(path, ".html") {
+	} else if strings.HasSuffix(path, htmlSuffix) {
 		htmlFiles = append(htmlFiles, path)
+	} else {
+		return nil
 	}
 
 	for _, src := range htmlFiles {
 		if shouldIgnore(src) {
 			continue
 		}
+		log.Printf("+ %s\n", src)
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewHTMLDocument(src, meta,
@@ -502,18 +508,17 @@ func (s *Substructure) discoverHTML(path string) error {
 
 // discoverMarkdown adds all *.md documents in or at the given path glob to the substructure.
 func (s *Substructure) discoverMarkdown(path string) error {
-	log.Println("Discovering markdown.")
 	var mdFiles []string
 	if stat, err := os.Stat(path); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
 	} else if stat.IsDir() {
-		mdFiles, err = filepathx.Glob(filepath.Join(path, "**", "*.md"))
+		mdFiles, err = filepathx.Glob(filepath.Join(path, "**", fmt.Sprintf("*%s", markdownSuffix)))
 		if err != nil {
 			return err
 		}
-	} else {
+	} else if strings.HasSuffix(path, markdownSuffix) {
 		mdFiles = append(mdFiles, path)
 	}
 
@@ -521,6 +526,7 @@ func (s *Substructure) discoverMarkdown(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
+		log.Printf("+ %s\n", src)
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewMarkdownDocument(src, meta,
@@ -536,7 +542,6 @@ func (s *Substructure) discoverMarkdown(path string) error {
 
 // discoverOrg adds all *.org documents in or at the given path glob to the substructure.
 func (s *Substructure) discoverOrg(path string) error {
-	log.Println("Discovering Org.")
 	// TODO: Allow looking in user's org directory.
 	// TODO: Allow rendering only a subsection of an org file.
 	var orgFiles []string
@@ -545,11 +550,11 @@ func (s *Substructure) discoverOrg(path string) error {
 			return err
 		}
 	} else if stat.IsDir() {
-		orgFiles, err = filepathx.Glob(filepath.Join(path, "**", "*.org"))
+		orgFiles, err = filepathx.Glob(filepath.Join(path, "**", fmt.Sprintf("*%s", orgSuffix)))
 		if err != nil {
 			return err
 		}
-	} else {
+	} else if strings.HasSuffix(path, orgSuffix) {
 		orgFiles = append(orgFiles, path)
 	}
 
@@ -557,6 +562,7 @@ func (s *Substructure) discoverOrg(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
+		log.Printf("+ %s\n", src)
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewOrgDocument(src, meta,
@@ -605,6 +611,7 @@ func (s *Substructure) discoverStatic(path string) error {
 		} else if stat.IsDir() {
 			continue
 		}
+		log.Printf("+ %s\n", src)
 		webPath, err := filepath.Rel(path, src)
 		if err != nil {
 			return fmt.Errorf("cannot determine desired web path of %q: %w", src, err)
@@ -617,19 +624,18 @@ func (s *Substructure) discoverStatic(path string) error {
 
 // discoverTemplates adds all *.html.tmpl documents in or at the given path glob to the substructure.
 func (s *Substructure) discoverTemplates(path string) error {
-	log.Println("Discovering templates.")
 	var tmplFiles []string
 	if stat, err := os.Stat(path); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
 	} else if stat.IsDir() {
-		tmplf, err := filepathx.Glob(filepath.Join(path, "**", "*.html.tmpl"))
+		tmplf, err := filepathx.Glob(filepath.Join(path, "**", fmt.Sprintf("*%s", templateSuffix)))
 		if err != nil {
 			return err
 		}
 		tmplFiles = append(tmplFiles, tmplf...)
-	} else if strings.HasSuffix(path, ".html.tmpl") {
+	} else if strings.HasSuffix(path, templateSuffix) {
 		tmplFiles = append(tmplFiles, path)
 	}
 
@@ -637,6 +643,7 @@ func (s *Substructure) discoverTemplates(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
+		log.Printf("+ %s\n", src)
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewHTMLDocument(src, meta,
