@@ -1,17 +1,15 @@
 package main
 
 import (
+	"runtime/debug"
+
 	"twos.dev/winter/cmd"
 )
 
-// version is overridden by ldflags in the Makefile.
-var version = "development"
-
 func main() {
-	if version == "" {
-		// Catch the case where -ldflags="-X 'main.version='" is passed
-		// (e.g. due to missing env var).
-		version = "development"
+	version := "development"
+	if info, ok := debug.ReadBuildInfo(); ok {
+		version = info.Main.Version
 	}
 	cmd.Execute(version)
 }
