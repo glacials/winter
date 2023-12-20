@@ -18,10 +18,9 @@ const (
 // Execute sets up the root command and all attached subcommands,
 // then runs them according to the CLI arguments supplied.
 func Execute(version string) {
-	var (
-		logger    = slog.New(slog.NewTextHandler(os.Stderr, nil))
-		verbosity int
-	)
+	opts := slog.HandlerOptions{Level: slog.LevelDebug}
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &opts))
+	var verbosity int
 	rootCmd := &cobra.Command{
 		Use:   "winter",
 		Short: cliutils.Sprintf("Build or serve a static website locally"),
@@ -54,22 +53,13 @@ func Execute(version string) {
 				it automatically stops and errors.
 		`),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			opts := slog.HandlerOptions{}
-			verboseFlagCount, err := cmd.Flags().GetCount(verboseFlag)
-			if err != nil {
-				return err
-			}
-			switch verboseFlagCount {
-			case 0:
+			if verbosity <= 0 {
 				opts.Level = slog.LevelWarn
-			case 1:
+			} else if verbosity == 1 {
 				opts.Level = slog.LevelInfo
-			case 2:
+			} else {
 				opts.Level = slog.LevelDebug
 			}
-			logger = slog.New(
-				slog.NewTextHandler(os.Stderr, &opts),
-			)
 			return nil
 		},
 		Version: version,

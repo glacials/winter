@@ -354,13 +354,13 @@ func (s *Substructure) ExecuteAll(dist string) error {
 //
 // If src isn't known to the substructure, Rebuild no-ops and returns no error.
 func (s *Substructure) Rebuild(src string) error {
-	s.logger.Debug(fmt.Sprintf("%s ↓\n", src))
+	s.logger.Debug(fmt.Sprintf("%s ↓", src))
 	if doc, ok := s.DocBySourcePath(src); ok {
 		if err := s.Build(doc); err != nil {
 			return fmt.Errorf("cannot retrieve doc at %q: %w", src, err)
 		}
 	} else {
-		s.logger.Debug("  + Tracking new file.\n")
+		s.logger.Debug("  + Tracking new file.")
 		if err := s.discoverAtPath(src); err != nil {
 			return fmt.Errorf("cannot add document to in-flight substructure: %w", err)
 		}
@@ -452,8 +452,8 @@ func (s *Substructure) discoverGalleries(src string) error {
 		if shouldIgnore(src) {
 			return nil
 		}
-		s.logger.Debug(fmt.Sprintf("+ %s\n", src))
-		im, err := NewIMG(src, s.cfg)
+		s.logger.Debug(fmt.Sprintf("+ %s", src))
+		im, err := NewIMG(s.logger, src, s.cfg)
 		if err != nil {
 			return fmt.Errorf("cannot create gallery document from %s: %w", src, err)
 		}
@@ -488,7 +488,7 @@ func (s *Substructure) discoverHTML(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
-		s.logger.Debug(fmt.Sprintf("+ %s\n", src))
+		s.logger.Debug(fmt.Sprintf("+ %s", src))
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewHTMLDocument(src, meta,
@@ -528,7 +528,7 @@ func (s *Substructure) discoverMarkdown(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
-		s.logger.Debug(fmt.Sprintf("+ %s\n", src))
+		s.logger.Debug(fmt.Sprintf("+ %s", src))
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewMarkdownDocument(src, meta,
@@ -564,7 +564,7 @@ func (s *Substructure) discoverOrg(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
-		s.logger.Debug(fmt.Sprintf("+ %s\n", src))
+		s.logger.Debug(fmt.Sprintf("+ %s", src))
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewOrgDocument(src, meta,
@@ -613,7 +613,7 @@ func (s *Substructure) discoverStatic(path string) error {
 		} else if stat.IsDir() {
 			continue
 		}
-		s.logger.Debug(fmt.Sprintf("+ %s\n", src))
+		s.logger.Debug(fmt.Sprintf("+ %s", src))
 		webPath, err := filepath.Rel(path, src)
 		if err != nil {
 			return fmt.Errorf("cannot determine desired web path of %q: %w", src, err)
@@ -645,7 +645,7 @@ func (s *Substructure) discoverTemplates(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
-		s.logger.Debug(fmt.Sprintf("+ %s\n", src))
+		s.logger.Debug(fmt.Sprintf("+ %s", src))
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewHTMLDocument(src, meta,

@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/jpeg"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -45,7 +46,8 @@ type img struct {
 	// WebPath is the path component of the URL to the image as it will exist after building.
 	WebPath string
 
-	cfg *Config
+	cfg    *Config
+	logger *slog.Logger
 }
 
 type thumbnail struct {
@@ -69,7 +71,7 @@ func (t thumbnails) Swap(i, j int) {
 
 // NewIMG returns a struct that represents an image to be built.
 // The returned value implements [Document].
-func NewIMG(src string, cfg *Config) (*img, error) {
+func NewIMG(logger *slog.Logger, src string, cfg *Config) (*img, error) {
 	relpath, err := filepath.Rel("src", src)
 	if err != nil {
 		return nil, fmt.Errorf("can't get relpath for photo `%s`: %w", src, err)
@@ -279,7 +281,7 @@ func (im *img) loadEXIF(r io.Reader) error {
 //
 // The file at src is read at least once every time this function is called,
 // but the thumbnails are only regenerated if src has changed since their last generation.
-func (d *img) thumbnails(srcPhoto image.Image, srcPath, dest string) error {
+func (im *img) thumbnails(srcPhoto image.Image, srcPath, dest string) error {
 	p := srcPhoto.Bounds().Size()
 	for height := 1; height < p.X; height *= 2 {
 		width := (height * p.X / p.Y) & -1
@@ -294,7 +296,8 @@ func (d *img) thumbnails(srcPhoto image.Image, srcPath, dest string) error {
 		if err != nil {
 			return fmt.Errorf("cannot get relative path for thumbnail %q: %w", dest, err)
 		}
-		d.Thumbnails = append(d.Thumbnails, &thumbnail{
+		im.logger.Debug(fmt.Sprintf("Created %sx%s thumbnail for %s", width, height, srcPath))
+		im.Thumbnails = append(im.Thumbnails, &thumbnail{
 			WebPath: webPath,
 			Width:   width,
 		})
