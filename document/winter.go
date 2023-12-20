@@ -274,30 +274,31 @@ func (s *Substructure) DocBySourcePath(path string) (doc Document, ok bool) {
 func (s *Substructure) ExecuteAll(dist string) error {
 	builtIMGs := map[string]*img{}
 	for _, gallery := range s.galleries {
-		for _, img := range gallery {
-			if prev, ok := builtIMGs[img.WebPath]; ok {
+		for _, im := range gallery {
+			s.logger.Info(fmt.Sprintf("Building image %s.", im.SourcePath))
+			if prev, ok := builtIMGs[im.WebPath]; ok {
 				return fmt.Errorf(
 					"both %s (%T) and %q (%T) wanted to build to %q/%q; remove one",
-					img.SourcePath,
-					img,
+					im.SourcePath,
+					im,
 					prev.SourcePath,
 					prev,
 					s.cfg.Production.URL,
-					img.WebPath,
+					im.WebPath,
 				)
 			}
-			srcf, err := os.Open(img.SourcePath)
+			srcf, err := os.Open(im.SourcePath)
 			if err != nil {
 				return fmt.Errorf("cannot open image: %w", err)
 			}
 			defer srcf.Close()
-			dest := filepath.Join(dist, img.WebPath)
-			if err := img.Load(srcf); err != nil {
+			dest := filepath.Join(dist, im.WebPath)
+			if err := im.Load(srcf); err != nil {
 				return fmt.Errorf("cannot load image: %w", err)
 			}
-			fresh, err := img.generatedPhotosAreFresh(img.SourcePath)
+			fresh, err := im.generatedPhotosAreFresh(im.SourcePath)
 			if err != nil {
-				return fmt.Errorf("cannot check freshness of %q: %w", img.SourcePath, err)
+				return fmt.Errorf("cannot check freshness of %q: %w", im.SourcePath, err)
 			}
 			if fresh {
 				continue
@@ -307,16 +308,16 @@ func (s *Substructure) ExecuteAll(dist string) error {
 			}
 			destf, err := os.Create(dest)
 			if err != nil {
-				return fmt.Errorf("cannot write image %q to %q during ExecuteAll: %w", img.SourcePath, dest, err)
+				return fmt.Errorf("cannot write image %q to %q during ExecuteAll: %w", im.SourcePath, dest, err)
 			}
 			defer destf.Close()
-			if err := img.Render(destf); err != nil {
+			if err := im.Render(destf); err != nil {
 				return err
 			}
-			if err := s.Rebuild(img.SourcePath); err != nil {
-				return fmt.Errorf("cannot rebuild image %q during ExecuteAll: %w", img.SourcePath, err)
+			if err := s.Rebuild(im.SourcePath); err != nil {
+				return fmt.Errorf("cannot rebuild image %q during ExecuteAll: %w", im.SourcePath, err)
 			}
-			builtIMGs[img.WebPath] = img
+			builtIMGs[im.WebPath] = im
 		}
 	}
 	builtDocs := map[string]Document{}

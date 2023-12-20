@@ -48,11 +48,18 @@ type img struct {
 
 	cfg    *Config
 	logger *slog.Logger
+	photo  image.Image
 }
 
 type thumbnail struct {
+	// Height is the height of the thumbnail.
+	Height int
+	// Width is the width of the thumbnail.
+	Width int
+
+	// WebPath is the path component of the URL where the thumbnail will ultimately be placed.
+	// It is equivalent to the thumbnail's path relative to dist.
 	WebPath string
-	Width   int
 }
 
 type thumbnails []*thumbnail
@@ -80,7 +87,8 @@ func NewIMG(logger *slog.Logger, src string, cfg *Config) (*img, error) {
 		SourcePath: src,
 		WebPath:    fmt.Sprintf("%s.webp", strings.TrimSuffix(relpath, filepath.Ext(relpath))),
 
-		cfg: cfg,
+		cfg:    cfg,
+		logger: logger,
 	}, nil
 }
 
@@ -92,10 +100,6 @@ func (im *img) Load(r io.Reader) error {
 			err,
 		)
 	}
-	return nil
-}
-
-func (im *img) Render(w io.Writer) error {
 	srcf, err := os.Open(im.SourcePath)
 	if err != nil {
 		return fmt.Errorf("can't read %q: %w", im.SourcePath, err)
@@ -109,16 +113,24 @@ func (im *img) Render(w io.Writer) error {
 			err,
 		)
 	}
-	if err := webpbin.Encode(w, srcPhoto); err != nil {
-		return fmt.Errorf("cannot encode source image %q to WebP: %w", im.SourcePath, err)
-	}
-	thmdest := filepath.Dir(strings.Replace(
-		filepath.Join("dist", im.WebPath),
+	im.photo = srcPhoto
+	thumbdir := filepath.Dir(strings.Replace(
+		filepath.Join(im.cfg.Dist, im.WebPath),
 		filepath.FromSlash("/img/"),
 		filepath.FromSlash("/img/thumb/"),
 		1,
 	))
-	if err := im.thumbnails(srcPhoto, im.SourcePath, thmdest); err != nil {
+	if err := im.intuitThumbnails(srcPhoto, im.SourcePath, thumbdir); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (im *img) Render(w io.Writer) error {
+	if err := webpbin.Encode(w, im.photo); err != nil {
+		return fmt.Errorf("cannot encode source image %q to WebP: %w", im.SourcePath, err)
+	}
+	if err := im.thumbnails(im.SourcePath); err != nil {
 		return fmt.Errorf("can't generate thumbnails: %w", err)
 	}
 	return nil
@@ -265,66 +277,43 @@ func (im *img) loadEXIF(r io.Reader) error {
 	return nil
 }
 
-// thumbnails makes WebP thumbnails of several sizes from the photo srcPhoto located at srcPath,
-// placing them in directory dst,
-// with thumbnail dimensions added to the filename just before the extension.
-//
-// It generates thumbnails with widths of powers of 2,
-// from 1 until the largest width possible that is still smaller than the source image.
-// Heights are automatically calculated to mantain aspect ratio.
-//
-// For example, a 500x500 image called foo.jpg would have thumbnails of sizes
-// 1x1, 2x2, 4x4, 8x8, 16x16, 32x32, 64x64, 128x128, and 256x256
-// generated.
-// The resulting thumbnails would be placed at
-// dest/foo.1x1.webp, dest/foo.2x2.webp, and so on.
+// thumbnails makes WebP thumbnails of the photo srcPhoto located at srcPath.
+// The thumbnails made are based on the specifications already in im.Thumbnails at call time.
 //
 // The file at src is read at least once every time this function is called,
 // but the thumbnails are only regenerated if src has changed since their last generation.
-func (im *img) thumbnails(srcPhoto image.Image, srcPath, dest string) error {
-	p := srcPhoto.Bounds().Size()
-	for height := 1; height < p.X; height *= 2 {
-		width := (height * p.X / p.Y) & -1
-		if width <= 0 || height <= 0 {
+func (im *img) thumbnails(srcPath string) error {
+	im.logger.Debug(fmt.Sprintf("Creating thumbnails for %s.", srcPath))
+	for _, thmb := range im.Thumbnails {
+		if thmb.Width <= 0 || thmb.Height <= 0 {
 			continue
 		}
-		destPath := filepath.Join(
-			dest,
-			fmt.Sprintf("%s.%dx%d.webp", strings.TrimSuffix(filepath.Base(srcPath), filepath.Ext(srcPath)), width, height),
-		)
-		webPath, err := filepath.Rel("dist", destPath)
-		if err != nil {
-			return fmt.Errorf("cannot get relative path for thumbnail %q: %w", dest, err)
-		}
-		im.logger.Debug(fmt.Sprintf("Created %sx%s thumbnail for %s", width, height, srcPath))
-		im.Thumbnails = append(im.Thumbnails, &thumbnail{
-			WebPath: webPath,
-			Width:   width,
-		})
-
-		dstPhoto := image.NewRGBA(image.Rect(0, 0, width, height))
+		im.logger.Debug(fmt.Sprintf("Created %dx%d thumbnail for %s.", thmb.Width, thmb.Height, srcPath))
+		dstPhoto := image.NewRGBA(image.Rect(0, 0, thmb.Width, thmb.Height))
 
 		draw.CatmullRom.Scale(
 			dstPhoto,
 			image.Rectangle{
 				image.Point{0, 0},
-				image.Point{width, height},
+				image.Point{thmb.Width, thmb.Height},
 			},
-			srcPhoto,
-			image.Rectangle{image.Point{0, 0}, srcPhoto.Bounds().Size()},
+			im.photo,
+			image.Rectangle{image.Point{0, 0}, im.photo.Bounds().Size()},
 			draw.Over,
 			nil,
 		)
 
-		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		path := filepath.Join(im.cfg.Dist, thmb.WebPath)
+
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return fmt.Errorf(
-				"cannot make thumbnail directory `%s`: %w",
-				filepath.Dir(dest),
+				"cannot make thumbnail directory %q: %w",
+				filepath.Dir(thmb.WebPath),
 				err,
 			)
 		}
 
-		destinationFile, err := os.Create(destPath)
+		destinationFile, err := os.Create(path)
 		if err != nil {
 			return fmt.Errorf(
 				"cannot create thumbnail for %q: %w",
@@ -335,10 +324,51 @@ func (im *img) thumbnails(srcPhoto image.Image, srcPath, dest string) error {
 		defer destinationFile.Close()
 
 		if err := webpbin.Encode(destinationFile, dstPhoto); err != nil {
-			return fmt.Errorf("cannot encode WebP thumbnail to %q: %w", destPath, err)
+			return fmt.Errorf("cannot encode WebP thumbnail to %q: %w", thmb.WebPath, err)
 		}
 	}
 
+	return nil
+}
+
+// intuitThumbnails decides how many and which thumbnails the image should have
+// (whether or not they already exist)
+// and replaces im.Thumbnails with a slice of them.
+// It does not generate any thumbnails.
+//
+// The thumbnails decided upon have widths of powers of 2,
+// from 1 until the largest width possible that is still smaller than the source image.
+// Heights are automatically calculated to mantain aspect ratio.
+//
+// For example, a 500x500 image called foo.jpg would have thumbnails of sizes
+// 1x1, 2x2, 4x4, 8x8, 16x16, 32x32, 64x64, 128x128, and 256x256.
+// The thumbnail WebPaths would be
+// foo.1x1.webp,
+// foo.2x2.webp,
+// and so on.
+func (im *img) intuitThumbnails(srcPhoto image.Image, srcPath, thumbdir string) error {
+	var thmbs thumbnails
+	p := srcPhoto.Bounds().Size()
+	for height := 1; height < p.X; height *= 2 {
+		width := (height * p.X / p.Y) & -1
+		if width <= 0 || height <= 0 {
+			continue
+		}
+		destPath := filepath.Join(
+			thumbdir,
+			fmt.Sprintf("%s.%dx%d.webp", strings.TrimSuffix(filepath.Base(srcPath), filepath.Ext(srcPath)), width, height),
+		)
+		webPath, err := filepath.Rel(im.cfg.Dist, destPath)
+		if err != nil {
+			return fmt.Errorf("cannot get relative path for thumbnail %q: %w", thumbdir, err)
+		}
+		thmbs = append(thmbs, &thumbnail{
+			Height:  height,
+			WebPath: webPath,
+			Width:   width,
+		})
+	}
+	im.Thumbnails = thmbs
 	return nil
 }
 
