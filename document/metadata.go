@@ -3,9 +3,12 @@ package document // import "twos.dev/winter/document"
 import (
 	"fmt"
 	"html/template"
+	"io"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/adrg/frontmatter"
 )
 
 var textDocExts = map[string]struct{}{
@@ -70,7 +73,10 @@ type Metadata struct {
 }
 
 // NewMetadata returns a Metadata with some defaults filled in
-// according to the file at path src.
+// according path src.
+//
+// NewMetadata is purely lexicographic;
+// no files are opened or read.
 //
 // Defaults that depend on parsing the content of the document,
 // such as a Preview generated from its content,
@@ -101,6 +107,16 @@ func (meta *Metadata) IsType(t string) bool {
 		return false
 	}
 	return k == meta.Kind
+}
+
+// UnmarshalDocument parses the metadata from the given reader,
+// then reads and returns the remaining bytes.
+func (meta *Metadata) UnmarshalDocument(r io.Reader) ([]byte, error) {
+	b, err := frontmatter.Parse(r, &meta)
+	if err != nil {
+		return nil, fmt.Errorf("cannot load frontmatter: %w", err)
+	}
+	return b, nil
 }
 
 // funcmap returns a [template.FuncMap] for the document.

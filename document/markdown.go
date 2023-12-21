@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/adrg/frontmatter"
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/ast"
 	mdhtml "github.com/gomarkdown/markdown/html"
@@ -75,11 +74,9 @@ func (doc *MarkdownDocument) DependsOn(src string) bool {
 //
 // If called more than once, the last call wins.
 func (doc *MarkdownDocument) Load(r io.Reader) error {
-	// Reset metadata to the zero value.
-	// Fields removed from frontmatter shouldn't hold onto previous values.
-	body, err := frontmatter.Parse(r, doc.meta)
+	body, err := doc.meta.UnmarshalDocument(r)
 	if err != nil {
-		return fmt.Errorf("can't parse %s: %w", doc.meta.SourcePath, err)
+		return fmt.Errorf("cannot load template frontmatter for %q: %w", doc.meta.SourcePath, err)
 	}
 	p := parser.NewWithExtensions(
 		parser.Attributes |

@@ -253,7 +253,6 @@ func (s *Substructure) Build(doc Document) error {
 	if err := doc.Render(w); err != nil {
 		return fmt.Errorf("cannot render %q for building: %w", doc.Metadata().SourcePath, err)
 	}
-	s.logger.Debug(" ✓")
 	return nil
 }
 

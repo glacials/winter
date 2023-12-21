@@ -12,7 +12,6 @@ import (
 	"text/template/parse"
 	"time"
 
-	"github.com/adrg/frontmatter"
 	"twos.dev/winter/graphic"
 )
 
@@ -88,7 +87,7 @@ func (doc *TemplateDocument) DependsOn(src string) bool {
 //
 // If called more than once, the last call wins.
 func (doc *TemplateDocument) Load(r io.Reader) error {
-	docBytes, err := frontmatter.Parse(r, doc.meta)
+	docBytes, err := doc.meta.UnmarshalDocument(r)
 	if err != nil {
 		return fmt.Errorf("cannot load template frontmatter for %q: %w", doc.meta.SourcePath, err)
 	}

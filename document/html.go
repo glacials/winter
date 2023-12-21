@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/adrg/frontmatter"
 	"github.com/alecthomas/chroma"
 	chromahtml "github.com/alecthomas/chroma/formatters/html"
 	"github.com/alecthomas/chroma/lexers"
@@ -114,9 +113,9 @@ func (doc *HTMLDocument) DependsOn(src string) bool {
 //
 // If called more than once, the last call wins.
 func (doc *HTMLDocument) Load(r io.Reader) error {
-	body, err := frontmatter.Parse(r, doc.meta)
+	body, err := doc.meta.UnmarshalDocument(r)
 	if err != nil {
-		return fmt.Errorf("can't parse %s: %w", doc.meta.SourcePath, err)
+		return fmt.Errorf("cannot load template frontmatter for %q: %w", doc.meta.SourcePath, err)
 	}
 	for old, new := range earlyReplacements {
 		re, err := regexp.Compile(old)
@@ -150,7 +149,7 @@ func (doc *HTMLDocument) Load(r io.Reader) error {
 		return nil
 	}
 	if err := doc.next.Load(bytes.NewReader(doc.result)); err != nil {
-		return fmt.Errorf("cannot load from %T to %T: %w", doc, doc.next, err)
+		return fmt.Errorf("cannot load forward from %T to %T: %w", doc, doc.next, err)
 	}
 	return nil
 }
@@ -357,6 +356,7 @@ func (doc *HTMLDocument) setWebPath() {
 		doc.meta.WebPath = filepath.Base(doc.meta.SourcePath)
 	}
 	shortname, _, _ := strings.Cut(doc.meta.WebPath, ".")
+	shortname = strings.TrimLeft(shortname, "/")
 	doc.meta.WebPath = fmt.Sprintf("/%s.html", shortname)
 }
 
