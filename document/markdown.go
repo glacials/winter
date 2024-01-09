@@ -11,6 +11,7 @@ import (
 	"github.com/gomarkdown/markdown/ast"
 	mdhtml "github.com/gomarkdown/markdown/html"
 	"github.com/gomarkdown/markdown/parser"
+	gemini "github.com/tdemin/gmnhg"
 )
 
 var mdrepl = map[string][]byte{
@@ -32,9 +33,11 @@ var (
 type MarkdownDocument struct {
 	deps map[string]struct{}
 	meta *Metadata
-	// next is a pointer to the incarnation of this document that comes after Markdown rendering is complete.
-	next   Document
-	result []byte
+	// next holds the incarnations of this document that come after Markdown rendering is complete.
+	next map[Document]struct{}
+
+	html    []byte
+	gemtext []byte
 }
 
 type TemplateNode struct {
@@ -46,7 +49,7 @@ type TemplateNode struct {
 //
 // Nothing is read from disk; src is metadata.
 // To read and parse Markdown, call [Load].
-func NewMarkdownDocument(src string, meta *Metadata, next Document) *MarkdownDocument {
+func NewMarkdownDocument(src string, meta *Metadata, next map[Document]struct{}) *MarkdownDocument {
 	return &MarkdownDocument{
 		deps: map[string]struct{}{
 			src:                {},
@@ -67,17 +70,51 @@ func (doc *MarkdownDocument) DependsOn(src string) bool {
 	if strings.HasPrefix(filepath.Clean(src), "src/templates/") {
 		return true
 	}
-	return doc.next.DependsOn(src)
+	for next := range doc.next {
+		if next.DependsOn(src) {
+			return true
+		}
+	}
+	return false
 }
 
 // Load reads Markdown from r and loads it into doc.
 //
 // If called more than once, the last call wins.
 func (doc *MarkdownDocument) Load(r io.Reader) error {
-	body, err := doc.meta.UnmarshalDocument(r)
+	mdbody1, err := doc.meta.UnmarshalDocument(r)
 	if err != nil {
 		return fmt.Errorf("cannot load template frontmatter for %q: %w", doc.meta.SourcePath, err)
 	}
+
+	mdbody2 := make([]byte, len(mdbody1))
+	copy(mdbody2, mdbody1)
+	if err := doc.loadForGemini(mdbody1); err != nil {
+		return err
+	}
+	if err := doc.loadForHTML(mdbody2); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (doc *MarkdownDocument) loadForGemini(mdbody []byte) error {
+	gemtext, err := gemini.RenderMarkdown(mdbody, gemini.Defaults)
+	if err != nil {
+		return fmt.Errorf("cannot convert markdown in %s to gemtext: %w", doc.meta.SourcePath, err)
+	}
+	doc.gemtext = gemtext
+	for next := range doc.next {
+		if geminiDoc, ok := next.(*GeminiDocument); ok {
+			if err := geminiDoc.Load(bytes.NewReader(doc.gemtext)); err != nil {
+				return fmt.Errorf("cannot load from %T to %T: %w", doc, next, err)
+			}
+		}
+	}
+	return nil
+}
+
+func (doc *MarkdownDocument) loadForHTML(mdbody []byte) error {
 	p := parser.NewWithExtensions(
 		parser.Attributes |
 			parser.Autolink |
@@ -90,16 +127,20 @@ func (doc *MarkdownDocument) Load(r io.Reader) error {
 	)
 	p.Opts.ParserHook = parserHook
 
-	byts := markdown.ToHTML(body, p, newRenderer())
+	byts := markdown.ToHTML(mdbody, p, newRenderer())
 	for old, new := range mdrepl {
 		byts = bytes.ReplaceAll(byts, []byte(old), new)
 	}
-	doc.result = byts
+	doc.html = byts
 	if doc.next == nil {
 		return nil
 	}
-	if err := doc.next.Load(bytes.NewReader(doc.result)); err != nil {
-		return fmt.Errorf("cannot load from %T to %T: %w", doc, doc.next, err)
+	for next := range doc.next {
+		if htmlDoc, ok := next.(*HTMLDocument); ok {
+			if err := htmlDoc.Load(bytes.NewReader(doc.html)); err != nil {
+				return fmt.Errorf("cannot load from %T to %T: %w", doc, next, err)
+			}
+		}
 	}
 	return nil
 }
@@ -110,13 +151,34 @@ func (doc *MarkdownDocument) Metadata() *Metadata {
 
 func (doc *MarkdownDocument) Render(w io.Writer) error {
 	if doc.next == nil {
-		if _, err := io.Copy(w, bytes.NewReader(doc.result)); err != nil {
+		if _, err := io.Copy(w, bytes.NewReader(doc.html)); err != nil {
 			return fmt.Errorf("cannot render Markdown: %w", err)
 		}
 		return nil
 	}
-	if err := doc.next.Render(w); err != nil {
-		return fmt.Errorf("cannot render from %T to %T: %w", doc, doc.next, err)
+	for next := range doc.next {
+		if html, ok := next.(*HTMLDocument); ok {
+			if err := html.Render(w); err != nil {
+				return fmt.Errorf("cannot render from %T to %T: %w", doc, next, err)
+			}
+		}
+	}
+	return nil
+}
+
+func (doc *MarkdownDocument) RenderGemini(w io.Writer) error {
+	if doc.next == nil {
+		if _, err := io.Copy(w, bytes.NewReader(doc.gemtext)); err != nil {
+			return fmt.Errorf("cannot render Markdown: %w", err)
+		}
+		return nil
+	}
+	for next := range doc.next {
+		if gemini, ok := next.(*GeminiDocument); ok {
+			if err := gemini.Render(w); err != nil {
+				return fmt.Errorf("cannot render from %T to %T: %w", doc, next, err)
+			}
+		}
 	}
 	return nil
 }

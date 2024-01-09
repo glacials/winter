@@ -18,6 +18,7 @@ require (
 	github.com/niklasfasching/go-org v1.6.6-0.20230219175512-fa3e6f91d96b
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/spf13/cobra v1.5.0
+	github.com/tdemin/gmnhg v0.4.2
 	github.com/yargevad/filepathx v1.0.0
 	golang.org/x/image v0.5.0
 	golang.org/x/net v0.18.0
@@ -30,13 +31,14 @@ require (
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
 	github.com/fatih/color v1.9.0 // indirect
+	github.com/grokify/html-strip-tags-go v0.0.1 // indirect
 	github.com/kyokomi/emoji/v2 v2.2.8 // indirect
 	github.com/lucasb-eyer/go-colorful v1.0.3 // indirect
-	github.com/mattn/go-colorable v0.1.4 // indirect
+	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
-	github.com/mattn/go-runewidth v0.0.12 // indirect
-	github.com/rivo/uniseg v0.1.0 // indirect
-	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	github.com/mattn/go-runewidth v0.0.13 // indirect
+	github.com/olekukonko/tablewriter v0.0.5 // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
 )
 
 require (

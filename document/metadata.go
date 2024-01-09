@@ -41,6 +41,13 @@ type Metadata struct {
 	//
 	// If unset, src/templates/text_document.html.tmpl is used.
 	Layout string `yaml:"layout,omitempty"`
+	// GeminiPath is the path component of the Geminispace URL that will point to this document,
+	// once rendered.
+	// GeminiPath MUST NOT contain any slashes;
+	// everything is top-level.
+	//
+	// GeminiPath is equivalent to the path to the destination file relative to dist.
+	GeminiPath string `yaml:"-,omitempty"`
 	// ParentFilename is the filename component of another document that this one is a child of.
 	// Parenthood is a purely semantic relationship for the benefit of the user.
 	// Templates can access parents to influence rendering.
@@ -67,7 +74,7 @@ type Metadata struct {
 	// WebPath MUST NOT contain any slashes;
 	// everything is top-level.
 	//
-	// WebPath is equivalent to the path to the destination file,
+	// WebPath is equivalent to the path to the destination file
 	// relative to dist.
 	WebPath string `yaml:"filename,omitempty"`
 }
@@ -89,10 +96,13 @@ func NewMetadata(src, tmplDir string) *Metadata {
 	}
 	noExt := filename[0:i]
 	webPath := noExt
+	geminiPath := noExt
 	if _, ok := textDocExts[filepath.Ext(src)]; ok {
 		webPath = fmt.Sprintf("%s.html", noExt)
+		geminiPath = fmt.Sprintf("%s.gmi", noExt)
 	}
 	return &Metadata{
+		GeminiPath:  geminiPath,
 		Kind:        draft,
 		Layout:      filepath.Join(tmplDir, "text_document.html.tmpl"),
 		SourcePath:  src,

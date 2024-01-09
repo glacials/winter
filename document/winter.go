@@ -240,6 +240,18 @@ func (s *Substructure) Build(doc Document) error {
 	if err := doc.Load(r); err != nil {
 		return fmt.Errorf("cannot load %q for building %q: %w", doc.Metadata().SourcePath, doc.Metadata().Title, err)
 	}
+
+	if err := s.buildWWW(doc); err != nil {
+		return err
+	}
+	if err := s.buildGemini(doc); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Substructure) buildWWW(doc Document) error {
 	dest := filepath.Join(s.cfg.Dist, doc.Metadata().WebPath)
 	s.logger.Debug(fmt.Sprintf("  → %s", pad(dest)))
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
@@ -252,6 +264,30 @@ func (s *Substructure) Build(doc Document) error {
 	defer w.Close()
 	if err := doc.Render(w); err != nil {
 		return fmt.Errorf("cannot render %q for building: %w", doc.Metadata().SourcePath, err)
+	}
+	return nil
+}
+
+func (s *Substructure) buildGemini(doc Document) error {
+	dest := filepath.Join(s.cfg.Dist, doc.Metadata().GeminiPath)
+	s.logger.Debug(fmt.Sprintf("  → %s", pad(dest)))
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return fmt.Errorf("cannot make directory structure for %q: %w", dest, err)
+	}
+	w, err := os.Create(dest)
+	if err != nil {
+		return fmt.Errorf(
+			"cannot build %q into %s: %w",
+			doc.Metadata().SourcePath,
+			filepath.Join(dest, doc.Metadata().WebPath),
+			err,
+		)
+	}
+	defer w.Close()
+	if gr, ok := doc.(GeminiRenderer); ok {
+		if err := gr.RenderGemini(w); err != nil {
+			return fmt.Errorf("cannot render %q for building: %w", doc.Metadata().SourcePath, err)
+		}
 	}
 	return nil
 }
@@ -532,9 +568,12 @@ func (s *Substructure) discoverMarkdown(path string) error {
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewMarkdownDocument(src, meta,
-				NewHTMLDocument(src, meta,
-					NewTemplateDocument(src, meta, s.docs, s.galleries, nil),
-				),
+				map[Document]struct{}{
+					NewHTMLDocument(src, meta,
+						NewTemplateDocument(src, meta, s.docs, s.galleries, nil),
+					): {},
+					NewGeminiDocument(src, meta): {},
+				},
 			),
 		)
 	}
