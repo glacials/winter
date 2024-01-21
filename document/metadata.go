@@ -96,7 +96,7 @@ func NewMetadata(src, tmplDir string) *Metadata {
 	}
 	noExt := filename[0:i]
 	webPath := noExt
-	geminiPath := noExt
+	geminiPath := "" // Can't have Gemini files overwriting extensionless "web" files like CNAME
 	if _, ok := textDocExts[filepath.Ext(src)]; ok {
 		webPath = fmt.Sprintf("%s.html", noExt)
 		geminiPath = fmt.Sprintf("%s.gmi", noExt)
