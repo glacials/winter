@@ -269,6 +269,10 @@ func (s *Substructure) buildWWW(doc Document) error {
 }
 
 func (s *Substructure) buildGemini(doc Document) error {
+	if doc.Metadata().GeminiPath == "" {
+		s.logger.Debug(fmt.Sprintf("Skipping building %s into Gemini file", doc.Metadata().SourcePath))
+		return nil
+	}
 	dest := filepath.Join(s.cfg.Dist, doc.Metadata().GeminiPath)
 	s.logger.Debug(fmt.Sprintf("  → %s", pad(dest)))
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
