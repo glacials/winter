@@ -228,6 +228,23 @@ func NewSubstructure(logger *slog.Logger, cfg *Config) (*Substructure, error) {
 	return &s, s.discover()
 }
 
+// DocumentCount returns the number of documents known to the substructure.
+func (s *Substructure) DocumentCount() int {
+	if s.docs == nil {
+		return 0
+	}
+	return len(s.docs.All)
+}
+
+// ImageCount returns the total number of images across all galleries.
+func (s *Substructure) ImageCount() int {
+	total := 0
+	for _, imgs := range s.galleries {
+		total += len(imgs)
+	}
+	return total
+}
+
 // Build builds doc.
 //
 // To also build downstream dependencies, use [Rebuild] instead.
