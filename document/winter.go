@@ -326,6 +326,16 @@ func (s *Substructure) ExecuteAll(dist string) error {
 					im.WebPath,
 				)
 			}
+			fresh, err := im.generatedPhotosAreFresh(im.SourcePath)
+			if err != nil {
+				return fmt.Errorf("cannot check freshness of %q: %w", im.SourcePath, err)
+			}
+			if fresh {
+				if err := im.LoadEXIF(); err != nil {
+					return fmt.Errorf("cannot load exif for %q: %w", im.SourcePath, err)
+				}
+				continue
+			}
 			srcf, err := os.Open(im.SourcePath)
 			if err != nil {
 				return fmt.Errorf("cannot open image: %w", err)
@@ -334,13 +344,6 @@ func (s *Substructure) ExecuteAll(dist string) error {
 			dest := filepath.Join(dist, im.WebPath)
 			if err := im.Load(srcf); err != nil {
 				return fmt.Errorf("cannot load image: %w", err)
-			}
-			fresh, err := im.generatedPhotosAreFresh(im.SourcePath)
-			if err != nil {
-				return fmt.Errorf("cannot check freshness of %q: %w", im.SourcePath, err)
-			}
-			if fresh {
-				continue
 			}
 			if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 				return fmt.Errorf("cannot make gallery dir %q: %w", filepath.Dir(dest), err)
