@@ -64,6 +64,14 @@ func newBuildCmd(logger *slog.Logger) *cobra.Command {
 				return err
 			}
 
+			if !*serve {
+				cliutils.Printf(
+					"Build complete! Generated %d pages and %d images. Stay frosty!\n",
+					s.DocumentCount(),
+					s.ImageCount(),
+				)
+			}
+
 			if *serve {
 				baseURL := url.URL{
 					Scheme: "http",
