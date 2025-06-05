@@ -92,6 +92,19 @@ func NewIMG(logger *slog.Logger, src string, cfg *Config) (*img, error) {
 	}, nil
 }
 
+// LoadEXIF populates im's EXIF information without decoding the entire image.
+func (im *img) LoadEXIF() error {
+	f, err := os.Open(im.SourcePath)
+	if err != nil {
+		return fmt.Errorf("can't read %q: %w", im.SourcePath, err)
+	}
+	defer f.Close()
+	if err := im.loadEXIF(f); err != nil {
+		return fmt.Errorf("cannot get camera for %q: %w", im.SourcePath, err)
+	}
+	return nil
+}
+
 func (im *img) Load(r io.Reader) error {
 	if err := im.loadEXIF(r); err != nil {
 		return fmt.Errorf(
