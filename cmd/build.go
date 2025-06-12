@@ -81,6 +81,7 @@ func newBuildCmd(logger *slog.Logger) *cobra.Command {
 				reloader := Reloader{
 					Ignore:       ignoreDirectories,
 					Substructure: s,
+					closeSockets: make(chan struct{}),
 				}
 
 				var mux http.ServeMux
