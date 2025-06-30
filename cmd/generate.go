@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"io"
 	"io/fs"
-	"log/slog"
 	"os"
 	"regexp"
 
@@ -15,7 +14,7 @@ import (
 	"twos.dev/winter/document"
 )
 
-func newGenerateCommand(logger *slog.Logger) *cobra.Command {
+func newGenerateCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "generate",
 		Short: "Generate internal Winter code",
@@ -57,5 +56,9 @@ func runGenerateCmd(in io.Reader, out io.Writer) error {
 	if err := json.Indent(&buf, schema, "", "  "); err != nil {
 		return err
 	}
-	return os.WriteFile("./cmd/winter.schema.yml", buf.Bytes(), fs.FileMode(0o644))
+	return os.WriteFile(
+		"./cmd/winter.schema.yml",
+		buf.Bytes(),
+		fs.FileMode(0o644),
+	)
 }

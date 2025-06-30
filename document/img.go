@@ -46,9 +46,8 @@ type img struct {
 	// WebPath is the path component of the URL to the image as it will exist after building.
 	WebPath string
 
-	cfg    *Config
-	logger *slog.Logger
-	photo  image.Image
+	cfg   *Config
+	photo image.Image
 }
 
 type thumbnail struct {
@@ -78,17 +77,19 @@ func (t thumbnails) Swap(i, j int) {
 
 // NewIMG returns a struct that represents an image to be built.
 // The returned value implements [Document].
-func NewIMG(logger *slog.Logger, src string, cfg *Config) (*img, error) {
+func NewIMG(src string, cfg *Config) (*img, error) {
 	relpath, err := filepath.Rel("src", src)
 	if err != nil {
 		return nil, fmt.Errorf("can't get relpath for photo `%s`: %w", src, err)
 	}
 	return &img{
 		SourcePath: src,
-		WebPath:    fmt.Sprintf("%s.webp", strings.TrimSuffix(relpath, filepath.Ext(relpath))),
+		WebPath: fmt.Sprintf(
+			"%s.webp",
+			strings.TrimSuffix(relpath, filepath.Ext(relpath)),
+		),
 
-		cfg:    cfg,
-		logger: logger,
+		cfg: cfg,
 	}, nil
 }
 
@@ -141,7 +142,11 @@ func (im *img) Load(r io.Reader) error {
 
 func (im *img) Render(w io.Writer) error {
 	if err := webpbin.Encode(w, im.photo); err != nil {
-		return fmt.Errorf("cannot encode source image %q to WebP: %w", im.SourcePath, err)
+		return fmt.Errorf(
+			"cannot encode source image %q to WebP: %w",
+			im.SourcePath,
+			err,
+		)
 	}
 	if err := im.thumbnails(im.SourcePath); err != nil {
 		return fmt.Errorf("can't generate thumbnails: %w", err)
@@ -206,7 +211,12 @@ func (d *img) generatedPhotosAreFresh(src string) (bool, error) {
 		return false, fmt.Errorf("cannot compute hash for %q: %w", src, err)
 	}
 
-	sumPath, err := xdg.CacheFile(fmt.Sprintf("%s.sum", filepath.Join(AppName, "generated", "img", filepath.Base(src))))
+	sumPath, err := xdg.CacheFile(
+		fmt.Sprintf(
+			"%s.sum",
+			filepath.Join(AppName, "generated", "img", filepath.Base(src)),
+		),
+	)
 	if err != nil {
 		return false, fmt.Errorf("cannot find Winter cache: %w", err)
 	}
@@ -221,7 +231,11 @@ func (d *img) generatedPhotosAreFresh(src string) (bool, error) {
 		return true, nil
 	}
 	if err := os.MkdirAll(filepath.Dir(sumPath), 0o755); err != nil {
-		return false, fmt.Errorf("cann't make thumbnail directory for sums %q: %w", filepath.Dir(sumPath), err)
+		return false, fmt.Errorf(
+			"cann't make thumbnail directory for sums %q: %w",
+			filepath.Dir(sumPath),
+			err,
+		)
 	}
 	if err := os.WriteFile(sumPath, []byte(fmt.Sprintf("%d", newSum)), 0o644); err != nil {
 		return false, fmt.Errorf("cannot write hash for %q: %w", src, err)
@@ -275,7 +289,12 @@ func (im *img) loadEXIF(r io.Reader) error {
 	_, err = x.Get(exif.GPSInfoIFDPointer)
 	if err == nil {
 		// location data is set! no no no!
-		panic(fmt.Sprintf("photo %s has location data! please strip it.", im.SourcePath))
+		panic(
+			fmt.Sprintf(
+				"photo %s has location data! please strip it.",
+				im.SourcePath,
+			),
+		)
 	}
 
 	im.EXIF = EXIF{
@@ -296,12 +315,19 @@ func (im *img) loadEXIF(r io.Reader) error {
 // The file at src is read at least once every time this function is called,
 // but the thumbnails are only regenerated if src has changed since their last generation.
 func (im *img) thumbnails(srcPath string) error {
-	im.logger.Debug(fmt.Sprintf("Creating thumbnails for %s.", srcPath))
+	slog.Debug(fmt.Sprintf("Creating thumbnails for %s.", srcPath))
 	for _, thmb := range im.Thumbnails {
 		if thmb.Width <= 0 || thmb.Height <= 0 {
 			continue
 		}
-		im.logger.Debug(fmt.Sprintf("Created %dx%d thumbnail for %s.", thmb.Width, thmb.Height, srcPath))
+		slog.Debug(
+			fmt.Sprintf(
+				"Created %dx%d thumbnail for %s.",
+				thmb.Width,
+				thmb.Height,
+				srcPath,
+			),
+		)
 		dstPhoto := image.NewRGBA(image.Rect(0, 0, thmb.Width, thmb.Height))
 
 		draw.CatmullRom.Scale(
@@ -337,7 +363,11 @@ func (im *img) thumbnails(srcPath string) error {
 		defer destinationFile.Close()
 
 		if err := webpbin.Encode(destinationFile, dstPhoto); err != nil {
-			return fmt.Errorf("cannot encode WebP thumbnail to %q: %w", thmb.WebPath, err)
+			return fmt.Errorf(
+				"cannot encode WebP thumbnail to %q: %w",
+				thmb.WebPath,
+				err,
+			)
 		}
 	}
 
@@ -359,7 +389,10 @@ func (im *img) thumbnails(srcPath string) error {
 // foo.1x1.webp,
 // foo.2x2.webp,
 // and so on.
-func (im *img) intuitThumbnails(srcPhoto image.Image, srcPath, thumbdir string) error {
+func (im *img) intuitThumbnails(
+	srcPhoto image.Image,
+	srcPath, thumbdir string,
+) error {
 	var thmbs thumbnails
 	p := srcPhoto.Bounds().Size()
 	for height := 1; height < p.X; height *= 2 {
@@ -369,11 +402,20 @@ func (im *img) intuitThumbnails(srcPhoto image.Image, srcPath, thumbdir string) 
 		}
 		destPath := filepath.Join(
 			thumbdir,
-			fmt.Sprintf("%s.%dx%d.webp", strings.TrimSuffix(filepath.Base(srcPath), filepath.Ext(srcPath)), width, height),
+			fmt.Sprintf(
+				"%s.%dx%d.webp",
+				strings.TrimSuffix(filepath.Base(srcPath), filepath.Ext(srcPath)),
+				width,
+				height,
+			),
 		)
 		webPath, err := filepath.Rel(im.cfg.Dist, destPath)
 		if err != nil {
-			return fmt.Errorf("cannot get relative path for thumbnail %q: %w", thumbdir, err)
+			return fmt.Errorf(
+				"cannot get relative path for thumbnail %q: %w",
+				thumbdir,
+				err,
+			)
 		}
 		thmbs = append(thmbs, &thumbnail{
 			Height:  height,
@@ -392,7 +434,10 @@ func (im *img) intuitThumbnails(srcPhoto image.Image, srcPath, thumbdir string) 
 //
 // If the EXIF data is present but winter.yml does not index it,
 // an error is returned.
-func (im *img) findGear(x *exif.Exif, make, model exif.FieldName) (*Gear, error) {
+func (im *img) findGear(
+	x *exif.Exif,
+	make, model exif.FieldName,
+) (*Gear, error) {
 	gearMake, err := x.Get(make)
 	if err != nil {
 		if errors.Is(err, exif.TagNotPresentError(make)) {
@@ -411,7 +456,11 @@ func (im *img) findGear(x *exif.Exif, make, model exif.FieldName) (*Gear, error)
 	gearModelStr := sanitizeEXIFField(gearModel)
 	g, ok := im.cfg.GearByString(gearMakeStr, gearModelStr)
 	if !ok {
-		return nil, fmt.Errorf("no such gear with make=%q and model=%q", gearMakeStr, gearModelStr)
+		return nil, fmt.Errorf(
+			"no such gear with make=%q and model=%q",
+			gearMakeStr,
+			gearModelStr,
+		)
 	}
 	return g, nil
 }

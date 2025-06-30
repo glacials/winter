@@ -11,16 +11,14 @@ import (
 )
 
 const (
-	dist        = "dist"
-	verboseFlag = "verbose"
+	dist = "dist"
 )
 
 // Execute sets up the root command and all attached subcommands,
 // then runs them according to the CLI arguments supplied.
 func Execute(version string) {
-	opts := slog.HandlerOptions{Level: slog.LevelDebug}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &opts))
-	var verbosity int
+	opts := slog.HandlerOptions{Level: slog.LevelWarn}
+	var moreVerbose, lessVerbose int
 	rootCmd := &cobra.Command{
 		Use:   "winter",
 		Short: cliutils.Sprintf("Build or serve a static website locally"),
@@ -53,28 +51,45 @@ func Execute(version string) {
 				it automatically stops and errors.
 		`),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if verbosity <= 0 {
+			verbosity := moreVerbose - lessVerbose
+			switch verbosity {
+			case -1:
+				opts.Level = slog.LevelError
+			case 0:
 				opts.Level = slog.LevelWarn
-			} else if verbosity == 1 {
+			case 1:
 				opts.Level = slog.LevelInfo
-			} else {
+			case 2:
 				opts.Level = slog.LevelDebug
 			}
+			slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &opts)))
 			return nil
 		},
 		Version: version,
 	}
 	f := rootCmd.PersistentFlags()
 	_ = *f.StringArrayP("source", "i", []string{}, "supplemental source file or directory to build (can be specified multiple times)")
-	f.CountVarP(&verbosity, verboseFlag, "v", "output more details when running")
-	rootCmd.AddCommand(newBuildCmd(logger))
-	rootCmd.AddCommand(newCleanCmd(logger))
-	rootCmd.AddCommand(newConfigCmd(logger))
-	rootCmd.AddCommand(newFreezeCmd(logger))
-	rootCmd.AddCommand(newGenerateCommand(logger))
-	rootCmd.AddCommand(newInitCmd(logger))
-	rootCmd.AddCommand(newServeCmd(logger))
-	rootCmd.AddCommand(newTestCmd(logger))
+	f.CountVarP(
+		&moreVerbose,
+		"verbose",
+		"v",
+		"output more details",
+	)
+	f.CountVarP(
+		&lessVerbose,
+		"quiet",
+		"q",
+		"output fewer details",
+	)
+
+	rootCmd.AddCommand(newBuildCmd())
+	rootCmd.AddCommand(newCleanCmd())
+	rootCmd.AddCommand(newConfigCmd())
+	rootCmd.AddCommand(newFreezeCmd())
+	rootCmd.AddCommand(newGenerateCommand())
+	rootCmd.AddCommand(newInitCmd())
+	rootCmd.AddCommand(newServeCmd())
+	rootCmd.AddCommand(newTestCmd())
 	err := rootCmd.ExecuteContext(context.Background())
 	if err != nil {
 		os.Exit(1)

@@ -3,7 +3,6 @@ package cmd // import "twos.dev/winter/cmd"
 import (
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
 
@@ -11,7 +10,7 @@ import (
 	"twos.dev/winter/cliutils"
 )
 
-func newTestCmd(logger *slog.Logger) *cobra.Command {
+func newTestCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "test <environment>",
 		Short: "Run site-specific integration tests",
@@ -50,7 +49,9 @@ func newTestCmd(logger *slog.Logger) *cobra.Command {
 			// In case I ever move off GitHub Pages, make sure we continue this implementation detail;
 			// twos.dev/winter is a required path because that's the Go import path.
 			if string(winterBody) != string(winterHTMLBody) {
-				return fmt.Errorf("twos.dev/winter and twos.dev/winter.html must be the same page")
+				return fmt.Errorf(
+					"twos.dev/winter and twos.dev/winter.html must be the same page",
+				)
 			}
 			return nil
 		},

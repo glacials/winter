@@ -2,7 +2,6 @@ package cmd // import "twos.dev/winter/cmd"
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 
 	"github.com/mitchellh/mapstructure"
@@ -12,7 +11,7 @@ import (
 	"twos.dev/winter/document"
 )
 
-func newConfigCmd(logger *slog.Logger) *cobra.Command {
+func newConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Interact with Winter configuration",

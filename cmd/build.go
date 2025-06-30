@@ -39,7 +39,7 @@ var (
 // directory dst.
 type Builder func(src, dst string, cfg document.Config) error
 
-func newBuildCmd(logger *slog.Logger) *cobra.Command {
+func newBuildCmd() *cobra.Command {
 	buildCmd := &cobra.Command{
 		Use:   "build",
 		Short: "Build a Winter project",
@@ -47,19 +47,19 @@ func newBuildCmd(logger *slog.Logger) *cobra.Command {
 			Build the Winter project in the current directory into ` + "`./dist`" + `.
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			logger.Debug("Reading config.")
+			slog.Debug("Reading config.")
 			cfg, err := document.NewConfig()
 			if err != nil {
 				return err
 			}
 
-			logger.Debug("Building substructure.")
-			s, err := document.NewSubstructure(logger, cfg)
+			slog.Debug("Building substructure.")
+			s, err := document.NewSubstructure(cfg)
 			if err != nil {
 				return err
 			}
 
-			logger.Debug("Executing templates.")
+			slog.Debug("Executing templates.")
 			if err := s.ExecuteAll(dist); err != nil {
 				return err
 			}
@@ -94,7 +94,7 @@ func newBuildCmd(logger *slog.Logger) *cobra.Command {
 				}
 				server.RegisterOnShutdown(reloader.Shutdown)
 
-				go listenForCtrlC(logger, stop, &server, &reloader)
+				go listenForCtrlC(stop, &server, &reloader)
 				go startFileServer(&server)
 
 				if err := reloader.Watch(append(cfg.Src, ".")); err != nil {
@@ -112,16 +112,21 @@ func newBuildCmd(logger *slog.Logger) *cobra.Command {
 	}
 
 	f := buildCmd.PersistentFlags()
-	serve = f.BoolP(serveFlag, "s", false, "start a webserver and rebuild on file changes")
+	serve = f.BoolP(
+		serveFlag,
+		"s",
+		false,
+		"start a webserver and rebuild on file changes",
+	)
 
 	return buildCmd
 }
 
-func listenForCtrlC(logger *slog.Logger, stop chan struct{}, srvr *http.Server, reloader *Reloader) {
+func listenForCtrlC(stop chan struct{}, srvr *http.Server, reloader *Reloader) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
-	logger.Debug("Stopping")
+	slog.Debug("Stopping")
 	ctx, cancel := context.WithTimeout(context.TODO(), 1*time.Second)
 	defer cancel()
 	if err := srvr.Shutdown(ctx); err != nil {

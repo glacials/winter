@@ -3,7 +3,6 @@ package cmd // import "twos.dev/winter/cmd"
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -17,7 +16,7 @@ const (
 	KnownURLsPath = "src/urls.txt"
 )
 
-func newFreezeCmd(logger *slog.Logger) *cobra.Command {
+func newFreezeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "freeze [shortname...]",
 		Short: "Turn a warm file cold",
@@ -56,7 +55,7 @@ func newFreezeCmd(logger *slog.Logger) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			s, err := document.NewSubstructure(logger, cfg)
+			s, err := document.NewSubstructure(cfg)
 			if err != nil {
 				return err
 			}
@@ -68,11 +67,18 @@ func newFreezeCmd(logger *slog.Logger) *cobra.Command {
 			for _, shortname := range args {
 				document, ok := s.DocBySourcePath(shortname)
 				if !ok {
-					return fmt.Errorf("cannot find document with shortname `%s`", shortname)
+					return fmt.Errorf(
+						"cannot find document with shortname `%s`",
+						shortname,
+					)
 				}
 
 				oldpath := document.Metadata().SourcePath
-				newpath := filepath.Join("src", "cold", filepath.Base(document.Metadata().SourcePath))
+				newpath := filepath.Join(
+					"src",
+					"cold",
+					filepath.Base(document.Metadata().SourcePath),
+				)
 
 				// The directory to remove warm files from, in addition to src/warm, so
 				// that the file doesn't just sync back to src/warm after removal. TODO:

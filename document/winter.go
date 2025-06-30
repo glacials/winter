@@ -208,22 +208,24 @@ type Substructure struct {
 	docs *documents
 	// galleries is a map of gallery name to slice of galleries in that gallery.
 	galleries map[string][]*img
-	logger    *slog.Logger
 }
 
 // NewSubstructure returns a substructure with the given configuration.
 // Upon initialization, a substructure is the result of a discovery phase of content on the filesystem.
 // Further calls are needed to build the full graph of content and render it to HTML.
-func NewSubstructure(logger *slog.Logger, cfg *Config) (*Substructure, error) {
+func NewSubstructure(cfg *Config) (*Substructure, error) {
 	devURL, err := url.Parse(cfg.Development.URL)
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse config development.url %q: %w", cfg.Development.URL, err)
+		return nil, fmt.Errorf(
+			"cannot parse config development.url %q: %w",
+			cfg.Development.URL,
+			err,
+		)
 	}
 	s := Substructure{
 		cfg:    cfg,
 		devURL: devURL,
 		docs:   &documents{},
-		logger: logger,
 	}
 	return &s, s.discover()
 }
@@ -251,11 +253,21 @@ func (s *Substructure) ImageCount() int {
 func (s *Substructure) Build(doc Document) error {
 	r, err := os.Open(doc.Metadata().SourcePath)
 	if err != nil {
-		return fmt.Errorf("cannot read %q for building %q: %w", doc.Metadata().SourcePath, doc.Metadata().Title, err)
+		return fmt.Errorf(
+			"cannot read %q for building %q: %w",
+			doc.Metadata().SourcePath,
+			doc.Metadata().Title,
+			err,
+		)
 	}
 	defer r.Close()
 	if err := doc.Load(r); err != nil {
-		return fmt.Errorf("cannot load %q for building %q: %w", doc.Metadata().SourcePath, doc.Metadata().Title, err)
+		return fmt.Errorf(
+			"cannot load %q for building %q: %w",
+			doc.Metadata().SourcePath,
+			doc.Metadata().Title,
+			err,
+		)
 	}
 
 	if err := s.buildWWW(doc); err != nil {
@@ -270,28 +282,43 @@ func (s *Substructure) Build(doc Document) error {
 
 func (s *Substructure) buildWWW(doc Document) error {
 	dest := filepath.Join(s.cfg.Dist, doc.Metadata().WebPath)
-	s.logger.Debug(fmt.Sprintf("  → %s", pad(dest)))
+	slog.Debug(fmt.Sprintf("  → %s", pad(dest)))
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return fmt.Errorf("cannot make directory structure for %q: %w", dest, err)
 	}
 	w, err := os.Create(dest)
 	if err != nil {
-		return fmt.Errorf("cannot build %q (web path %q) into %q: %w", doc.Metadata().SourcePath, doc.Metadata().WebPath, dest, err)
+		return fmt.Errorf(
+			"cannot build %q (web path %q) into %q: %w",
+			doc.Metadata().SourcePath,
+			doc.Metadata().WebPath,
+			dest,
+			err,
+		)
 	}
 	defer w.Close()
 	if err := doc.Render(w); err != nil {
-		return fmt.Errorf("cannot render %q for building: %w", doc.Metadata().SourcePath, err)
+		return fmt.Errorf(
+			"cannot render %q for building: %w",
+			doc.Metadata().SourcePath,
+			err,
+		)
 	}
 	return nil
 }
 
 func (s *Substructure) buildGemini(doc Document) error {
 	if doc.Metadata().GeminiPath == "" {
-		s.logger.Debug(fmt.Sprintf("Skipping building %s into Gemini file", doc.Metadata().SourcePath))
+		slog.Debug(
+			fmt.Sprintf(
+				"Skipping building %s into Gemini file",
+				doc.Metadata().SourcePath,
+			),
+		)
 		return nil
 	}
 	dest := filepath.Join(s.cfg.Dist, doc.Metadata().GeminiPath)
-	s.logger.Debug(fmt.Sprintf("  → %s", pad(dest)))
+	slog.Debug(fmt.Sprintf("  → %s", pad(dest)))
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return fmt.Errorf("cannot make directory structure for %q: %w", dest, err)
 	}
@@ -307,7 +334,11 @@ func (s *Substructure) buildGemini(doc Document) error {
 	defer w.Close()
 	if gr, ok := doc.(GeminiRenderer); ok {
 		if err := gr.RenderGemini(w); err != nil {
-			return fmt.Errorf("cannot render %q for building: %w", doc.Metadata().SourcePath, err)
+			return fmt.Errorf(
+				"cannot render %q for building: %w",
+				doc.Metadata().SourcePath,
+				err,
+			)
 		}
 	}
 	return nil
@@ -331,7 +362,7 @@ func (s *Substructure) ExecuteAll(dist string) error {
 	builtIMGs := map[string]*img{}
 	for _, gallery := range s.galleries {
 		for _, im := range gallery {
-			s.logger.Info(fmt.Sprintf("Building image %s.", im.SourcePath))
+			slog.Info(fmt.Sprintf("Building image %s.", im.SourcePath))
 			if prev, ok := builtIMGs[im.WebPath]; ok {
 				return fmt.Errorf(
 					"both %s (%T) and %q (%T) wanted to build to %q/%q; remove one",
@@ -345,7 +376,11 @@ func (s *Substructure) ExecuteAll(dist string) error {
 			}
 			fresh, err := im.generatedPhotosAreFresh(im.SourcePath)
 			if err != nil {
-				return fmt.Errorf("cannot check freshness of %q: %w", im.SourcePath, err)
+				return fmt.Errorf(
+					"cannot check freshness of %q: %w",
+					im.SourcePath,
+					err,
+				)
 			}
 			if fresh {
 				if err := im.LoadEXIF(); err != nil {
@@ -363,18 +398,31 @@ func (s *Substructure) ExecuteAll(dist string) error {
 				return fmt.Errorf("cannot load image: %w", err)
 			}
 			if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-				return fmt.Errorf("cannot make gallery dir %q: %w", filepath.Dir(dest), err)
+				return fmt.Errorf(
+					"cannot make gallery dir %q: %w",
+					filepath.Dir(dest),
+					err,
+				)
 			}
 			destf, err := os.Create(dest)
 			if err != nil {
-				return fmt.Errorf("cannot write image %q to %q during ExecuteAll: %w", im.SourcePath, dest, err)
+				return fmt.Errorf(
+					"cannot write image %q to %q during ExecuteAll: %w",
+					im.SourcePath,
+					dest,
+					err,
+				)
 			}
 			defer destf.Close()
 			if err := im.Render(destf); err != nil {
 				return err
 			}
 			if err := s.Rebuild(im.SourcePath); err != nil {
-				return fmt.Errorf("cannot rebuild image %q during ExecuteAll: %w", im.SourcePath, err)
+				return fmt.Errorf(
+					"cannot rebuild image %q during ExecuteAll: %w",
+					im.SourcePath,
+					err,
+				)
 			}
 			builtIMGs[im.WebPath] = im
 		}
@@ -414,13 +462,13 @@ func (s *Substructure) ExecuteAll(dist string) error {
 //
 // If src isn't known to the substructure, Rebuild no-ops and returns no error.
 func (s *Substructure) Rebuild(src string) error {
-	s.logger.Debug(fmt.Sprintf("%s ↓", src))
+	slog.Debug(fmt.Sprintf("%s ↓", src))
 	if doc, ok := s.DocBySourcePath(src); ok {
 		if err := s.Build(doc); err != nil {
 			return fmt.Errorf("cannot retrieve doc at %q: %w", src, err)
 		}
 	} else {
-		s.logger.Debug("  + Tracking new file.")
+		slog.Debug("  + Tracking new file.")
 		if err := s.discoverAtPath(src); err != nil {
 			return fmt.Errorf("cannot add document to in-flight substructure: %w", err)
 		}
@@ -428,7 +476,12 @@ func (s *Substructure) Rebuild(src string) error {
 	for _, doc := range s.docs.All {
 		if doc.DependsOn(src) && doc.Metadata().SourcePath != src {
 			if err := s.Build(doc); err != nil {
-				return fmt.Errorf("cannot build %q (dependent of %q): %w", doc.Metadata().SourcePath, src, err)
+				return fmt.Errorf(
+					"cannot build %q (dependent of %q): %w",
+					doc.Metadata().SourcePath,
+					src,
+					err,
+				)
 			}
 		}
 	}
@@ -458,7 +511,7 @@ func (s *Substructure) addIMG(im *img) error {
 
 // discover clears the substructure of any known documents and discovers all documents from scratch on the filesystem.
 func (s *Substructure) discover() error {
-	s.logger.Debug("Starting discovery.")
+	slog.Debug("Starting discovery.")
 	paths := append(s.cfg.Src, "src")
 	for _, path := range paths {
 		if err := s.discoverAtPath(path); err != nil {
@@ -512,8 +565,8 @@ func (s *Substructure) discoverGalleries(src string) error {
 		if shouldIgnore(src) {
 			return nil
 		}
-		s.logger.Debug(fmt.Sprintf("+ %s", src))
-		im, err := NewIMG(s.logger, src, s.cfg)
+		slog.Debug(fmt.Sprintf("+ %s", src))
+		im, err := NewIMG(src, s.cfg)
 		if err != nil {
 			return fmt.Errorf("cannot create gallery document from %s: %w", src, err)
 		}
@@ -548,7 +601,7 @@ func (s *Substructure) discoverHTML(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
-		s.logger.Debug(fmt.Sprintf("+ %s", src))
+		slog.Debug(fmt.Sprintf("+ %s", src))
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewHTMLDocument(src, meta,
@@ -588,7 +641,7 @@ func (s *Substructure) discoverMarkdown(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
-		s.logger.Debug(fmt.Sprintf("+ %s", src))
+		slog.Debug(fmt.Sprintf("+ %s", src))
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewMarkdownDocument(src, meta,
@@ -627,7 +680,7 @@ func (s *Substructure) discoverOrg(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
-		s.logger.Debug(fmt.Sprintf("+ %s", src))
+		slog.Debug(fmt.Sprintf("+ %s", src))
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewOrgDocument(src, meta,
@@ -676,7 +729,7 @@ func (s *Substructure) discoverStatic(path string) error {
 		} else if stat.IsDir() {
 			continue
 		}
-		s.logger.Debug(fmt.Sprintf("+ %s", src))
+		slog.Debug(fmt.Sprintf("+ %s", src))
 		webPath, err := filepath.Rel(path, src)
 		if err != nil {
 			return fmt.Errorf("cannot determine desired web path of %q: %w", src, err)
@@ -708,7 +761,7 @@ func (s *Substructure) discoverTemplates(path string) error {
 		if shouldIgnore(src) {
 			continue
 		}
-		s.logger.Debug(fmt.Sprintf("+ %s", src))
+		slog.Debug(fmt.Sprintf("+ %s", src))
 		meta := NewMetadata(src, tmplPath)
 		s.add(
 			NewHTMLDocument(src, meta,
