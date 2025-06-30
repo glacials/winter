@@ -14,7 +14,6 @@ import (
 var textDocExts = map[string]struct{}{
 	".htm":      {},
 	".html":     {},
-	".txt":      {},
 	".md":       {},
 	".markdown": {},
 	".org":      {},
@@ -42,7 +41,7 @@ type Metadata struct {
 	//
 	// If unset, src/templates/text_document.html.tmpl is used.
 	Layout string `yaml:"layout,omitempty"`
-	// GeminiPath is the path component of the Geminispace URL for this document,
+	// GeminiPath is the path component of the Geminispace URL that will point to this document,
 	// once rendered.
 	// GeminiPath MUST NOT contain any slashes;
 	// everything is top-level.
@@ -56,18 +55,6 @@ type Metadata struct {
 	// Preview is a sentence-long blurb of the document,
 	// to be shown along with its title as a teaser of its contents.
 	Preview string `yaml:"preview,omitempty"`
-	// RawPath is the path component of the URL that will point to this document's
-	// raw version, once rendered.
-	//
-	// For example, a .txt file with `filename` "rfc0001.html" will be rendered
-	// both to `rfc0001.html` and `rfc0001.txt`, the latter being the raw version.
-	//
-	// RawPath MUST NOT contain any slashes;
-	// everything is top-level.
-	//
-	// RawPath is equivalent to the path to the destination file
-	// relative to dist.
-	RawPath string `yaml:"-"`
 	// SourcePath is the location on disk of the original file that this document represents.
 	// It is relative to the working directory.
 	SourcePath string `yaml:"-"`

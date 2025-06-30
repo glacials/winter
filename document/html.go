@@ -115,11 +115,7 @@ func (doc *HTMLDocument) DependsOn(src string) bool {
 func (doc *HTMLDocument) Load(r io.Reader) error {
 	body, err := doc.meta.UnmarshalDocument(r)
 	if err != nil {
-		return fmt.Errorf(
-			"cannot load template frontmatter for %q: %w",
-			doc.meta.SourcePath,
-			err,
-		)
+		return fmt.Errorf("cannot load template frontmatter for %q: %w", doc.meta.SourcePath, err)
 	}
 	for old, new := range earlyReplacements {
 		re, err := regexp.Compile(old)
@@ -138,11 +134,7 @@ func (doc *HTMLDocument) Load(r io.Reader) error {
 	}
 	var buf bytes.Buffer
 	if err := html.Render(&buf, doc.root); err != nil {
-		return fmt.Errorf(
-			"cannot render HTML to build %q: %w",
-			doc.meta.WebPath,
-			err,
-		)
+		return fmt.Errorf("cannot render HTML to build %q: %w", doc.meta.WebPath, err)
 	}
 	byts := buf.Bytes()
 	for old, new := range lateReplacements {
@@ -157,12 +149,7 @@ func (doc *HTMLDocument) Load(r io.Reader) error {
 		return nil
 	}
 	if err := doc.next.Load(bytes.NewReader(doc.result)); err != nil {
-		return fmt.Errorf(
-			"cannot load forward from %T to %T: %w",
-			doc,
-			doc.next,
-			err,
-		)
+		return fmt.Errorf("cannot load forward from %T to %T: %w", doc, doc.next, err)
 	}
 	return nil
 }
@@ -183,7 +170,7 @@ func (doc *HTMLDocument) Massage() error {
 	if err := doc.setPreview(); err != nil {
 		return err
 	}
-	doc.setPaths()
+	doc.setWebPath()
 	if err := doc.insertTOC(); err != nil {
 		return err
 	}
@@ -282,27 +269,15 @@ func (doc *HTMLDocument) insertTOC() error {
 	}
 	toctmpl, err := template.New(tocPath).Parse(string(tocbody))
 	if err != nil {
-		return fmt.Errorf(
-			"cannot parse toc for %q: %w; %s",
-			doc.meta.SourcePath,
-			err,
-			tocbody,
-		)
+		return fmt.Errorf("cannot parse toc for %q: %w; %s", doc.meta.SourcePath, err, tocbody)
 	}
 	subtocPath := "_subtoc.html.tmpl"
-	subtocbody, err := os.ReadFile(
-		filepath.Join(doc.meta.TemplateDir, subtocPath),
-	)
+	subtocbody, err := os.ReadFile(filepath.Join(doc.meta.TemplateDir, subtocPath))
 	if err != nil {
 		return fmt.Errorf("cannot read subtoc for %q: %w", doc.meta.SourcePath, err)
 	}
 	if _, err := toctmpl.New(subtocPath).Parse(string(subtocbody)); err != nil {
-		return fmt.Errorf(
-			"cannot parse subtoc for %q: %w; %s",
-			doc.meta.SourcePath,
-			err,
-			subtocbody,
-		)
+		return fmt.Errorf("cannot parse subtoc for %q: %w; %s", doc.meta.SourcePath, err, subtocbody)
 	}
 
 	var buf bytes.Buffer
@@ -374,27 +349,21 @@ func (doc *HTMLDocument) setTitle() error {
 	return nil
 }
 
-// setPaths sets the output paths for the document if needed,
-// sanitizing them even if set before this call.
-func (doc *HTMLDocument) setPaths() {
+// setWebPath sets a web path for the document if one was not manually specified,
+// and sanitizes any existing web path to remove extraneous extensions.
+func (doc *HTMLDocument) setWebPath() {
 	if doc.meta.WebPath == "" {
 		doc.meta.WebPath = filepath.Base(doc.meta.SourcePath)
 	}
 	shortname, _, _ := strings.Cut(doc.meta.WebPath, ".")
 	shortname = strings.TrimLeft(shortname, "/")
-
-	doc.meta.GeminiPath = fmt.Sprintf("/%s.gmi", shortname)
 	doc.meta.WebPath = fmt.Sprintf("/%s.html", shortname)
-	doc.meta.RawPath = fmt.Sprintf("/%s.txt", shortname)
 }
 
 // allOfNodeTypes returns all descendant nodes of n with any of the given types.
 // The returned slice is sorted in the same way the document was,
 // with parent nodes coming before their children.
-func allOfNodeTypes(
-	n *html.Node,
-	t map[html.NodeType]struct{},
-) (m []*html.Node) {
+func allOfNodeTypes(n *html.Node, t map[html.NodeType]struct{}) (m []*html.Node) {
 	if _, ok := t[n.Type]; ok {
 		m = append(m, n)
 	}

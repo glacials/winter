@@ -13,7 +13,7 @@ It has three principles:
    Winter is built for content that will last decades.
 2. **Good content is portable.**
    Winter is anti-lock-in.
-   Source documents are Markdown, Org, HTML, or plain text.
+   Source documents are Markdown, Org, or HTML.
    Winter-specific "syntax" degrades gracefully into human-readable text.
 3. **Understand content.**
    Winter is not just a markup parser and renderer.
@@ -56,12 +56,10 @@ documentation, see
     - `*.md`—Markdown files
     - `*.html`—HTML files
     - `*.org`—Org mode files
-    - `*.txt`—Plain text files
   - `./src/warm`—Unstable content, optionally [templated](https://pkg.go.dev/text/template)
     - `*.md`—Markdown files
     - `*.html`—HTML files
     - `*.org`—Org mode files
-    - `*.txt`—Plain text files
   - `./src/templates`—Reusable content
     - `text_document.html.tmpl`—Default page container (from `<html>` to `</html>`)
     - `*.html.tmpl`—HTML templates
@@ -112,7 +110,7 @@ Freeze all arguments, specified by shortname. This moves the files from
 
 ### Documents
 
-A document is an HTML, Markdown, Org, or plain text file with optional frontmatter.
+A document is an HTML, Markdown, or Org file with optional frontmatter.
 The first level 1 heading
 (`<h1>` in HTML, `#` in Markdown, `*` in Org)
 will be used as the document title.
@@ -133,12 +131,12 @@ This is an example document.
 
 ### Frontmatter
 
-Frontmatter for HTML, Markdown, and text documents is specified in YAML.
+Frontmatter for HTML and Markdown documents is specified in YAML.
 Frontmatter for Org files is specified using Org keywords of
 equivalent names (in whatever case you choose). All fields are
 optional.
 
-The available frontmatter fields for HTML, Markdown, and text are:
+The available frontmatter fields for HTML and Markdown are:
 
 ```yaml
 filename: example.html

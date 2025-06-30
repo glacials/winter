@@ -154,7 +154,6 @@ const (
 	htmlSuffix     = ".html"
 	markdownSuffix = ".md"
 	orgSuffix      = ".org"
-	textSuffix     = ".txt"
 	templateSuffix = ".html.tmpl"
 )
 
@@ -218,11 +217,7 @@ type Substructure struct {
 func NewSubstructure(logger *slog.Logger, cfg *Config) (*Substructure, error) {
 	devURL, err := url.Parse(cfg.Development.URL)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"cannot parse config development.url %q: %w",
-			cfg.Development.URL,
-			err,
-		)
+		return nil, fmt.Errorf("cannot parse config development.url %q: %w", cfg.Development.URL, err)
 	}
 	s := Substructure{
 		cfg:    cfg,
@@ -256,21 +251,11 @@ func (s *Substructure) ImageCount() int {
 func (s *Substructure) Build(doc Document) error {
 	r, err := os.Open(doc.Metadata().SourcePath)
 	if err != nil {
-		return fmt.Errorf(
-			"cannot read %q for building %q: %w",
-			doc.Metadata().SourcePath,
-			doc.Metadata().Title,
-			err,
-		)
+		return fmt.Errorf("cannot read %q for building %q: %w", doc.Metadata().SourcePath, doc.Metadata().Title, err)
 	}
 	defer r.Close()
 	if err := doc.Load(r); err != nil {
-		return fmt.Errorf(
-			"cannot load %q for building %q: %w",
-			doc.Metadata().SourcePath,
-			doc.Metadata().Title,
-			err,
-		)
+		return fmt.Errorf("cannot load %q for building %q: %w", doc.Metadata().SourcePath, doc.Metadata().Title, err)
 	}
 
 	if err := s.buildWWW(doc); err != nil {
@@ -291,33 +276,18 @@ func (s *Substructure) buildWWW(doc Document) error {
 	}
 	w, err := os.Create(dest)
 	if err != nil {
-		return fmt.Errorf(
-			"cannot build %q (web path %q) into %q: %w",
-			doc.Metadata().SourcePath,
-			doc.Metadata().WebPath,
-			dest,
-			err,
-		)
+		return fmt.Errorf("cannot build %q (web path %q) into %q: %w", doc.Metadata().SourcePath, doc.Metadata().WebPath, dest, err)
 	}
 	defer w.Close()
 	if err := doc.Render(w); err != nil {
-		return fmt.Errorf(
-			"cannot render %q for building: %w",
-			doc.Metadata().SourcePath,
-			err,
-		)
+		return fmt.Errorf("cannot render %q for building: %w", doc.Metadata().SourcePath, err)
 	}
 	return nil
 }
 
 func (s *Substructure) buildGemini(doc Document) error {
 	if doc.Metadata().GeminiPath == "" {
-		s.logger.Debug(
-			fmt.Sprintf(
-				"Skipping building %s into Gemini file",
-				doc.Metadata().SourcePath,
-			),
-		)
+		s.logger.Debug(fmt.Sprintf("Skipping building %s into Gemini file", doc.Metadata().SourcePath))
 		return nil
 	}
 	dest := filepath.Join(s.cfg.Dist, doc.Metadata().GeminiPath)
@@ -337,48 +307,7 @@ func (s *Substructure) buildGemini(doc Document) error {
 	defer w.Close()
 	if gr, ok := doc.(GeminiRenderer); ok {
 		if err := gr.RenderGemini(w); err != nil {
-			return fmt.Errorf(
-				"cannot render %q for building: %w",
-				doc.Metadata().SourcePath,
-				err,
-			)
-		}
-	}
-	return nil
-}
-
-func (s *Substructure) buildRaw(doc Document) error {
-	if doc.Metadata().RawPath == "" {
-		s.logger.Debug(
-			fmt.Sprintf(
-				"Skipping building %s into raw file",
-				doc.Metadata().SourcePath,
-			),
-		)
-		return nil
-	}
-	dest := filepath.Join(s.cfg.Dist, doc.Metadata().RawPath)
-	s.logger.Debug(fmt.Sprintf("  → %s", pad(dest)))
-	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-		return fmt.Errorf("cannot make directory structure for %q: %w", dest, err)
-	}
-	w, err := os.Create(dest)
-	if err != nil {
-		return fmt.Errorf(
-			"cannot build %q into %s: %w",
-			doc.Metadata().SourcePath,
-			filepath.Join(dest, doc.Metadata().WebPath),
-			err,
-		)
-	}
-	defer w.Close()
-	if rr, ok := doc.(RawRenderer); ok {
-		if err := rr.RenderRaw(w); err != nil {
-			return fmt.Errorf(
-				"cannot render %q for building: %w",
-				doc.Metadata().SourcePath,
-				err,
-			)
+			return fmt.Errorf("cannot render %q for building: %w", doc.Metadata().SourcePath, err)
 		}
 	}
 	return nil
@@ -416,11 +345,7 @@ func (s *Substructure) ExecuteAll(dist string) error {
 			}
 			fresh, err := im.generatedPhotosAreFresh(im.SourcePath)
 			if err != nil {
-				return fmt.Errorf(
-					"cannot check freshness of %q: %w",
-					im.SourcePath,
-					err,
-				)
+				return fmt.Errorf("cannot check freshness of %q: %w", im.SourcePath, err)
 			}
 			if fresh {
 				if err := im.LoadEXIF(); err != nil {
@@ -438,31 +363,18 @@ func (s *Substructure) ExecuteAll(dist string) error {
 				return fmt.Errorf("cannot load image: %w", err)
 			}
 			if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-				return fmt.Errorf(
-					"cannot make gallery dir %q: %w",
-					filepath.Dir(dest),
-					err,
-				)
+				return fmt.Errorf("cannot make gallery dir %q: %w", filepath.Dir(dest), err)
 			}
 			destf, err := os.Create(dest)
 			if err != nil {
-				return fmt.Errorf(
-					"cannot write image %q to %q during ExecuteAll: %w",
-					im.SourcePath,
-					dest,
-					err,
-				)
+				return fmt.Errorf("cannot write image %q to %q during ExecuteAll: %w", im.SourcePath, dest, err)
 			}
 			defer destf.Close()
 			if err := im.Render(destf); err != nil {
 				return err
 			}
 			if err := s.Rebuild(im.SourcePath); err != nil {
-				return fmt.Errorf(
-					"cannot rebuild image %q during ExecuteAll: %w",
-					im.SourcePath,
-					err,
-				)
+				return fmt.Errorf("cannot rebuild image %q during ExecuteAll: %w", im.SourcePath, err)
 			}
 			builtIMGs[im.WebPath] = im
 		}
@@ -516,12 +428,7 @@ func (s *Substructure) Rebuild(src string) error {
 	for _, doc := range s.docs.All {
 		if doc.DependsOn(src) && doc.Metadata().SourcePath != src {
 			if err := s.Build(doc); err != nil {
-				return fmt.Errorf(
-					"cannot build %q (dependent of %q): %w",
-					doc.Metadata().SourcePath,
-					src,
-					err,
-				)
+				return fmt.Errorf("cannot build %q (dependent of %q): %w", doc.Metadata().SourcePath, src, err)
 			}
 		}
 	}
@@ -576,9 +483,6 @@ func (s *Substructure) discoverAtPath(path string) error {
 		return err
 	}
 	if err := s.discoverOrg(path); err != nil {
-		return err
-	}
-	if err := s.discoverTXT(path); err != nil {
 		return err
 	}
 	// TODO: Calling discoverTemplates once misses *.html.tmpl files.
@@ -730,45 +634,6 @@ func (s *Substructure) discoverOrg(path string) error {
 				NewHTMLDocument(src, meta,
 					NewTemplateDocument(src, meta, s.docs, s.galleries, nil),
 				),
-			),
-		)
-	}
-
-	return nil
-}
-
-// discoverTXT adds all *.txt documents in or at the given path glob to the substructure.
-func (s *Substructure) discoverTXT(path string) error {
-	var txtFiles []string
-	if stat, err := os.Stat(path); err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-	} else if stat.IsDir() {
-		txtf, err := filepathx.Glob(filepath.Join(path, "**", fmt.Sprintf("*%s", textSuffix)))
-		if err != nil {
-			return err
-		}
-		txtFiles = append(txtFiles, txtf...)
-	} else if strings.HasSuffix(path, textSuffix) {
-		txtFiles = append(txtFiles, path)
-	}
-
-	for _, src := range txtFiles {
-		if shouldIgnore(src) {
-			continue
-		}
-		s.logger.Debug(fmt.Sprintf("+ %s", src))
-		meta := NewMetadata(src, tmplPath)
-		s.add(
-			NewTextDocument(src, meta,
-				map[Document]struct{}{
-					NewHTMLDocument(src, meta,
-						NewTemplateDocument(src, meta, s.docs, s.galleries, nil),
-					): {},
-					NewGeminiDocument(src, meta): {},
-					NewRawDocument(src, meta):    {},
-				},
 			),
 		)
 	}
