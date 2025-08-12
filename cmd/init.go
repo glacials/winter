@@ -45,6 +45,10 @@ func newInitCmd() *cobra.Command {
 				return nil
 			}
 
+			if err := os.WriteFile(winterYMLPath, []byte(winterYML), 0644); err != nil {
+				return fmt.Errorf("cannot write winter.yml: %w", err)
+			}
+
 			cliutils.Printf(`
 				winter.yml generated.
 				Open it and follow the instructions to set up your project.

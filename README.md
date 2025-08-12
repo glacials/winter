@@ -2,35 +2,39 @@
 
 [![Go Reference](https://pkg.go.dev/badge/twos.dev/winter.svg)](https://pkg.go.dev/twos.dev/winter)
 
-_Note: Winter is in its early alpha stages. It is not recommended to use Winter for important production content._
+_Note: Winter is in its alpha stage.
+It is not recommended to use Winter for important production content._
 
-Winter is a static website generator for people who can't can't settle on a static website generator.
+Winter is the static website generator for folks who want their content to last decades.
 It has three principles:
 
 1. **[Cool URIs don't change](https://www.w3.org/Provider/Style/URI)**.
-   When you tell Winter a page is done,
-   it gains permanent failsafes to prevent future breakage.
-   Winter is built for content that will last decades.
-2. **Good content is portable.**
-   Winter is anti-lock-in.
-   Source documents are Markdown, Org, or HTML.
-   Winter-specific "syntax" degrades gracefully into human-readable text.
-3. **Understand content.**
-   Winter is not just a markup parser and renderer.
-   It traverses ASTs to introduce visual treatments
-   without introducing any syntax on top of Markdown or Org.
+   Winter remembers the pages you publish,
+   and hard-fails if a URL changes.
+   Never accidentally break a link again.
+2. **Content should outlast generators.**
+   Source content and built artifacts are trivial to move to another generator,
+   or to none at all.
+3. **Special behavior through structure, not symbols.**
+   Winter-specific behaviors are based on structure,
+   not symbols,
+   so degrade gracefully if you change generators.
+   For example,
+   a figure caption is defined as an italics paragraph following a figure.
 
-Winter has only two strict rules:
+Winter has two rules:
 
 1. **Web paths end in `.html`.**
-   This ensures you can easily migrate old pages to any dumb fileserver without breaking links,
+   Migration to as little as a dumb fileserver should be easy,
    even if Winter itself is dead and gone.
-   Winter performs this enforcement for you.
-2. **All pages are top-level.**
-   Shuffling users up and down directory trees creates opportunities for links to invisibly break.
-   You can organize `src` however you want,
-   but Winter will always flatten it when producing `dist`
-   (and error on conflicts).
+   That means no routing layer.
+2. **Pages must not be in subdirectories.**
+   Shuffling users up and down directory trees creates opportunities for
+   invisible link breakages.
+   You can organize source trees how you want,
+   but built content will always be flat.
+
+Winter enforces these rules itself, so you don't have to remember them.
 
 ## Installation
 

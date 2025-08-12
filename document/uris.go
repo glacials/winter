@@ -44,7 +44,11 @@ func (s *Substructure) SaveNewURIs(dist string) error {
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			if err := os.WriteFile(s.cfg.Known.URIs, []byte(""), 0o644); err != nil {
-				return fmt.Errorf("cannot make known URIs file at %q: %w", s.cfg.Known.URIs, err)
+				return fmt.Errorf(
+					"cannot make known URIs file at %q: %w",
+					s.cfg.Known.URIs,
+					err,
+				)
 			}
 			return s.SaveNewURIs(dist)
 		}
@@ -66,14 +70,27 @@ func (s *Substructure) SaveNewURIs(dist string) error {
 	slices.Sort(list)
 	f, err := os.Create(s.cfg.Known.URIs)
 	if err != nil {
-		return fmt.Errorf("cannot open known URIs file %q for writing: %w", s.cfg.Known.URIs, err)
+		return fmt.Errorf(
+			"cannot open known URIs file %q for writing: %w",
+			s.cfg.Known.URIs,
+			err,
+		)
 	}
 	for _, uri := range list {
 		if _, err := f.WriteString(uri); err != nil {
-			return fmt.Errorf("cannot write URI %q to known URIs file %q: %w", uri, s.cfg.Known.URIs, err)
+			return fmt.Errorf(
+				"cannot write URI %q to known URIs file %q: %w",
+				uri,
+				s.cfg.Known.URIs,
+				err,
+			)
 		}
 		if _, err := f.WriteString("\n"); err != nil {
-			return fmt.Errorf("cannot write newline to known URIs file %q: %w", s.cfg.Known.URIs, err)
+			return fmt.Errorf(
+				"cannot write newline to known URIs file %q: %w",
+				s.cfg.Known.URIs,
+				err,
+			)
 		}
 	}
 	return nil
@@ -114,7 +131,17 @@ func (s *Substructure) validateURIsDidNotChange(dist string) error {
 		}
 	}
 	if len(changedURIs) > 0 {
-		return fmt.Errorf("cool URIs do not change, but these ones were removed by this build:\n\n- %s", strings.Join(changedURIs, "\n- "))
+		return fmt.Errorf(
+			`cool URIs do not change, but these ones were removed by this build:
+
+- %s
+
+Please restore these files and try again. You can inspect the results in dist/ for details.
+
+DANGER: If you want to break these URLs and cause them to 404, remove them from src/uris.txt.
+`,
+			strings.Join(changedURIs, "\n- "),
+		)
 	}
 	return nil
 }
