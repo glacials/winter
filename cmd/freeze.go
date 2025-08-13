@@ -43,11 +43,9 @@ func newFreezeCmd() *cobra.Command {
 			simply run ` + "`winter freeze`" + ` with no arguments.
 		`),
 		Example: cliutils.Sprintf(`
-			This command:
-
 					winter freeze src/warm/hello.md
 
-			moves the file src/warm/hello.md from src/warm to src/cold,
+			Moves the file src/warm/hello.md from src/warm to src/cold,
 			and adds it to the list of frozen URLs.
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
