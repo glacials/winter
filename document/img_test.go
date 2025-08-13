@@ -1,6 +1,7 @@
 package document
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
@@ -24,10 +25,16 @@ gear:
 func TestNewIMG(t *testing.T) {
 	c, err := newConfigFromBytes([]byte(sampleWinterYML))
 	assert.NilError(t, err)
+
 	im, err := NewIMG(sampleJPGPath, c)
 	assert.NilError(t, err)
+
 	srcf, err := os.Open(im.SourcePath)
 	assert.NilError(t, err)
 	defer srcf.Close()
+
 	assert.NilError(t, im.Load(srcf))
+
+	var b bytes.Buffer
+	assert.NilError(t, im.Render(&b))
 }

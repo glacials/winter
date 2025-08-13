@@ -124,7 +124,12 @@ func (s *Substructure) validateURIsDidNotChange(dist string) error {
 		_, err := os.Stat(filepath.Join(dist, string(pathBytes)))
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				changedURIs = append(changedURIs, string(pathBytes))
+				uri := url.URL{
+					Scheme: "https",
+					Host:   s.cfg.Production.URL,
+					Path:   string(pathBytes),
+				}
+				changedURIs = append(changedURIs, uri.String())
 			} else {
 				return fmt.Errorf("cannot stat %q: %w", pathBytes, err)
 			}
@@ -132,7 +137,7 @@ func (s *Substructure) validateURIsDidNotChange(dist string) error {
 	}
 	if len(changedURIs) > 0 {
 		return fmt.Errorf(
-			`cool URIs do not change, but these ones were removed by this build:
+			`cool URIs do not change, but these ones would have been removed by this build:
 
 - %s
 
