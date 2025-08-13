@@ -80,7 +80,7 @@ func (t thumbnails) Swap(i, j int) {
 func NewIMG(src string, cfg *Config) (*img, error) {
 	relpath, err := filepath.Rel("src", src)
 	if err != nil {
-		return nil, fmt.Errorf("can't get relpath for photo `%s`: %w", src, err)
+		return nil, fmt.Errorf("cannot get relative path for photo: %w", err)
 	}
 	return &img{
 		SourcePath: src,
@@ -457,9 +457,11 @@ func (im *img) findGear(
 	g, ok := im.cfg.GearByString(gearMakeStr, gearModelStr)
 	if !ok {
 		return nil, fmt.Errorf(
-			"no such gear with make=%q and model=%q",
+			`a piece of gear with make=%q model=%q was used to photograph %s, but no such gear exists in your winter.yml; options were %v`,
 			gearMakeStr,
 			gearModelStr,
+			im.SourcePath,
+			im.cfg.Gear,
 		)
 	}
 	return g, nil

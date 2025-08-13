@@ -115,7 +115,6 @@ type Gear struct {
 }
 
 func NewConfig() (*Config, error) {
-	var c Config
 	p, err := ConfigPath()
 	if err != nil {
 		return nil, err
@@ -123,10 +122,17 @@ func NewConfig() (*Config, error) {
 	f, err := os.ReadFile(p)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			fmt.Println("No config file found. Run winter init to create one interactively.")
+			fmt.Println(
+				"No config file found. Run winter init to create one interactively.",
+			)
 		}
 	}
-	if err := yaml.Unmarshal(f, &c); err != nil {
+	return newConfigFromBytes(f)
+}
+
+func newConfigFromBytes(b []byte) (*Config, error) {
+	var c Config
+	if err := yaml.Unmarshal(b, &c); err != nil {
 		return nil, err
 	}
 	if c.Development.URL == "" {
@@ -140,13 +146,23 @@ func NewConfig() (*Config, error) {
 	}
 	for _, g := range c.Gear {
 		if g.Make == "" {
-			return nil, fmt.Errorf("winter.yml: gear item with model=%q must have `make` attribute", g.Model)
+			return nil, fmt.Errorf(
+				"winter.yml: gear item with model=%q must have `make` attribute",
+				g.Model,
+			)
 		}
 		if g.Model == "" {
-			return nil, fmt.Errorf("winter.yml: gear item with make=%q must have `model` attribute", g.Make)
+			return nil, fmt.Errorf(
+				"winter.yml: gear item with make=%q must have `model` attribute",
+				g.Make,
+			)
 		}
 		if g.Link == "" {
-			return nil, fmt.Errorf("winter.yml: gear item with make=%q and model=%q must have `link` attribute, pointing to a web page for the gear item", g.Make, g.Model)
+			return nil, fmt.Errorf(
+				"winter.yml: gear item with make=%q and model=%q must have `link` attribute, pointing to a web page for the gear item",
+				g.Make,
+				g.Model,
+			)
 		}
 	}
 	for i := range c.Src {
@@ -159,11 +175,19 @@ func NewConfig() (*Config, error) {
 // If none could be found, ok is false.
 func (c *Config) GearByString(make, model string) (g *Gear, ok bool) {
 	for _, gear := range c.Gear {
-		if strings.EqualFold(gear.EXIF.Make, make) && strings.EqualFold(gear.EXIF.Model, model) {
+		if strings.EqualFold(gear.EXIF.Make, make) &&
+			strings.EqualFold(gear.EXIF.Model, model) {
 			return &gear, true
 		}
 	}
 	return nil, false
+}
+
+// SourcePaths returns all paths that should be searched for soruce files.
+// It is equivalent to "src" plus c.Src.
+func (c *Config) SourcePaths() []string {
+	return append([]string{"src"}, c.Src...)
+
 }
 
 func (c *Config) Save() error {
@@ -176,6 +200,21 @@ func (c *Config) Save() error {
 		return err
 	}
 	return os.WriteFile(p, bytes, fs.FileMode(os.O_WRONLY))
+}
+
+func ConfigPath() (string, error) {
+	if _, err := os.Stat(configFileName); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return configFileName, nil
+		}
+	} else {
+		return configFileName, nil
+	}
+	userCfg, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(userCfg, configRelDir, configFileName), nil
 }
 
 func InteractiveConfig() error {
@@ -198,19 +237,4 @@ func InteractiveConfig() error {
 		return err
 	}
 	return nil
-}
-
-func ConfigPath() (string, error) {
-	if _, err := os.Stat(configFileName); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return configFileName, nil
-		}
-	} else {
-		return configFileName, nil
-	}
-	userCfg, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(userCfg, configRelDir, configFileName), nil
 }

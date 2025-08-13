@@ -22,7 +22,7 @@ func Printf(format string, args ...any) (int, error) {
 }
 
 // Sprintf is like [fmt.Sprintf],
-// but applies several visual treatments to make format pleasant to read at a terminal,
+// but applies visual treatments for pleasant reading at a terminal,
 // especially when it spans multiple lines or paragraphs.
 //
 // Specifically,
