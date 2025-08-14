@@ -94,6 +94,9 @@ func NewIMG(src string, cfg *Config) (*img, error) {
 }
 
 // LoadEXIF populates im's EXIF information without decoding the entire image.
+//
+// Calling [Render] also implicitly loads EXIF data,
+// so calling both is redundant.
 func (im *img) LoadEXIF() error {
 	f, err := os.Open(im.SourcePath)
 	if err != nil {

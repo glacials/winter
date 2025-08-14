@@ -382,11 +382,18 @@ func (s *Substructure) ExecuteAll(dist string) error {
 					err,
 				)
 			}
+			// If the source is fresh but the target file doesn't exist in dist,
+			// we still need to (re)generate it. Only skip when both are true:
+			// fresh source AND existing generated artifact.
 			if fresh {
-				if err := im.LoadEXIF(); err != nil {
-					return fmt.Errorf("cannot load exif for %q: %w", im.SourcePath, err)
+				dest := filepath.Join(dist, im.WebPath)
+				if _, statErr := os.Stat(dest); statErr == nil {
+					if err := im.LoadEXIF(); err != nil {
+						return fmt.Errorf("cannot load exif for %q: %w", im.SourcePath, err)
+					}
+					builtIMGs[im.WebPath] = im
+					continue
 				}
-				continue
 			}
 			srcf, err := os.Open(im.SourcePath)
 			if err != nil {
