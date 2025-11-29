@@ -1,6 +1,6 @@
 module twos.dev/winter
 
-go 1.18
+go 1.23.0
 
 require (
 	gg-scm.io/pkg/git v0.10.0
@@ -21,7 +21,7 @@ require (
 	github.com/tdemin/gmnhg v0.4.2
 	github.com/yargevad/filepathx v1.0.0
 	golang.org/x/image v0.5.0
-	golang.org/x/net v0.18.0
+	golang.org/x/net v0.38.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.1
 )
@@ -64,6 +64,6 @@ require (
 	github.com/ulikunitz/xz v0.5.11 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
-	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
