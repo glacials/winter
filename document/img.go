@@ -109,6 +109,15 @@ func (im *img) LoadEXIF() error {
 	return nil
 }
 
+func (im *img) thumbnailDir() string {
+	return filepath.Dir(strings.Replace(
+		filepath.Join(im.cfg.Dist, im.WebPath),
+		filepath.FromSlash("/img/"),
+		filepath.FromSlash("/img/thumb/"),
+		1,
+	))
+}
+
 func (im *img) Load(r io.Reader) error {
 	if err := im.loadEXIF(r); err != nil {
 		return fmt.Errorf(
@@ -131,16 +140,28 @@ func (im *img) Load(r io.Reader) error {
 		)
 	}
 	im.photo = srcPhoto
-	thumbdir := filepath.Dir(strings.Replace(
-		filepath.Join(im.cfg.Dist, im.WebPath),
-		filepath.FromSlash("/img/"),
-		filepath.FromSlash("/img/thumb/"),
-		1,
-	))
-	if err := im.intuitThumbnails(srcPhoto, im.SourcePath, thumbdir); err != nil {
+	if err := im.intuitThumbnails(srcPhoto, im.SourcePath, im.thumbnailDir()); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (im *img) loadThumbnailMetadata() error {
+	srcf, err := os.Open(im.SourcePath)
+	if err != nil {
+		return fmt.Errorf("cannot read %q to infer thumbnails: %w", im.SourcePath, err)
+	}
+	defer srcf.Close()
+
+	cfg, _, err := image.DecodeConfig(srcf)
+	if err != nil {
+		return fmt.Errorf("cannot decode %q to infer thumbnails: %w", im.SourcePath, err)
+	}
+	if cfg.Width <= 0 || cfg.Height <= 0 {
+		return fmt.Errorf("cannot determine dimensions for %q", im.SourcePath)
+	}
+
+	return im.populateThumbnails(im.SourcePath, im.thumbnailDir(), cfg.Width, cfg.Height)
 }
 
 func (im *img) Render(w io.Writer) error {
@@ -396,10 +417,20 @@ func (im *img) intuitThumbnails(
 	srcPhoto image.Image,
 	srcPath, thumbdir string,
 ) error {
+	size := srcPhoto.Bounds().Size()
+	return im.populateThumbnails(srcPath, thumbdir, size.X, size.Y)
+}
+
+func (im *img) populateThumbnails(
+	srcPath, thumbdir string,
+	srcWidth, srcHeight int,
+) error {
 	var thmbs thumbnails
-	p := srcPhoto.Bounds().Size()
-	for height := 1; height < p.X; height *= 2 {
-		width := (height * p.X / p.Y) & -1
+	if srcWidth <= 0 || srcHeight <= 0 {
+		return fmt.Errorf("cannot generate thumbnails for %q with dimensions %dx%d", srcPath, srcWidth, srcHeight)
+	}
+	for height := 1; height < srcWidth; height *= 2 {
+		width := (height * srcWidth / srcHeight) & -1
 		if width <= 0 || height <= 0 {
 			continue
 		}

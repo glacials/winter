@@ -6,12 +6,128 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/yargevad/filepathx"
 )
+
+const (
+	gitCmd                              = "git"
+	gitWorktreeOutputWorktreeLinePrefix = "worktree "
+	gitWorktreeOutputHEADLinePrefix     = "HEAD "
+	gitWorktreeOutputBranchLinePrefix   = "branch "
+)
+
+// dist is a loose wrapper around the Git worktree for the dist directory.
+// This is how Winter manages the built files that are ultimately deployed:
+//
+// - the dist directory SHOULD be in .gitignore
+// - the dist directory SHOULD be a Git worktree that points to a bare branch
+// - said branch MUST be deployed by some other mechanism, like GitHub Pages
+type dist struct {
+	// branch is the name to use for the Git branch this worktree will have checked out.
+	// For GitHub Pages, this is historically gh-pages.
+	branch string
+	// path is the path to the dist directory.
+	// If not supplied, defaults to ./dist.
+	path string
+	// projectPath is the path to the Winter project.
+	projectPath string
+}
+
+// verifyExists creates a Git worktree for the dist directory if it doesn't
+// already exist.
+func (d *dist) verifyExists() error {
+	gitArgv := []string{"git", "-C", d.projectPath}
+
+	worktreeExistsCmd := exec.Command(
+		gitCmd, append(gitArgv, "worktree", "list", "--porcelain")...,
+	)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	worktreeExistsCmd.Stdout = &stdout
+	worktreeExistsCmd.Stderr = &stderr
+
+	if err := worktreeExistsCmd.Run(); err != nil {
+		return fmt.Errorf(
+			"dist directory %q is not a Git worktree: %w",
+			d.path,
+			err,
+		)
+	}
+
+	lines := strings.Split(stdout.String(), "\n")
+	var i int
+	for j, line := range lines {
+		if !strings.HasPrefix(line, gitWorktreeOutputWorktreeLinePrefix) {
+			continue
+		}
+		absWorktreePath := line[len(gitWorktreeOutputWorktreeLinePrefix)-1:]
+		absExpectedWorktreePath, err := filepath.Abs(d.path)
+		if err != nil {
+			return fmt.Errorf("cannot calculate expected worktree path: %w", err)
+		}
+		if absWorktreePath != absExpectedWorktreePath {
+			continue
+		}
+
+		// determine if worktreePath lies inside d.projectPath,
+		// whether either is relative or absolute.
+		absWorktreePath, err = filepath.Abs(absWorktreePath)
+		if err != nil {
+			return err
+		}
+
+		absProjectPath, err := filepath.Abs(d.projectPath)
+		if err != nil {
+			return err
+		}
+
+		relpath, err := filepath.Rel(absProjectPath, absWorktreePath)
+		if err != nil {
+			return fmt.Errorf(
+				"cannot calculate whether Git linked worktree dir is inside main worktree dir %q: %w",
+				d.path,
+				err,
+			)
+		}
+		if strings.HasPrefix(relpath, "..") {
+			return fmt.Errorf(
+				"Git linked worktree dir is not inside main worktree dir: %s",
+				d.path,
+			)
+		}
+		i = j
+		break
+	}
+	if !strings.HasPrefix(lines[i+1], gitWorktreeOutputHEADLinePrefix) {
+		return fmt.Errorf(
+			"unexpected output from Git worktree command's HEAD line: %s",
+			d.path,
+		)
+	}
+	if !strings.HasPrefix(lines[i+2], gitWorktreeOutputBranchLinePrefix) {
+		return fmt.Errorf(
+			"unexpected output from Git worktree command's branch line: %s",
+			d.path,
+		)
+	}
+	branchRef := lines[i+2][len(gitWorktreeOutputBranchLinePrefix):]
+	branchName := strings.TrimPrefix(branchRef, "refs/heads/")
+	if d.branch != branchName {
+		return fmt.Errorf(
+			"dist directory %q is not a Git worktree for branch %q",
+			d.path,
+			d.branch,
+		)
+	}
+
+	return nil
+}
 
 // SaveNewURIs indexes every HTML file in dist and saves their existence to disk.
 // Later, validateURIsDidNotChange can read that file and ensure no file is missing.
