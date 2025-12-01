@@ -55,3 +55,20 @@ func TestHTML(t *testing.T) {
 		})
 	}
 }
+
+func TestHTMLTitleWithInlineFormatting(t *testing.T) {
+	src := "src/test/TitleWithInlineFormatting"
+	doc := NewHTMLDocument(
+		src,
+		NewMetadata(src, filepath.Join("testdata", "templates")),
+		nil,
+	)
+
+	input := `<h1>What Makes <em>From</em> Soulslikes Different?</h1><p>Body</p>`
+	assert.NilError(t, doc.Load(strings.NewReader(input)))
+	assert.Equal(t, "What Makes From Soulslikes Different?", doc.Metadata().Title)
+
+	var actual bytes.Buffer
+	assert.NilError(t, doc.Render(&actual))
+	assert.Equal(t, surround("<p>Body</p>"), actual.String())
+}

@@ -337,11 +337,18 @@ func (doc *HTMLDocument) setTitle() error {
 	if h1 == nil {
 		return nil
 	}
-	for child := h1.FirstChild; child != nil; child = child.NextSibling {
-		if child.Type == html.TextNode {
-			doc.meta.Title = child.Data
+	var title strings.Builder
+	var collect func(*html.Node)
+	collect = func(n *html.Node) {
+		if n.Type == html.TextNode {
+			title.WriteString(n.Data)
+		}
+		for child := n.FirstChild; child != nil; child = child.NextSibling {
+			collect(child)
 		}
 	}
+	collect(h1)
+	doc.meta.Title = title.String()
 	if doc.meta.Title == "" {
 		return fmt.Errorf("no title found in %s", doc.meta.SourcePath)
 	}
