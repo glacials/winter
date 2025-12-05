@@ -19,11 +19,6 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-type htmlReplacement struct {
-	replacement []byte
-	re          *regexp.Regexp
-}
-
 var (
 	// styleWrapper is used to surround any text that,
 	// if the entire page is in a monospace font,
@@ -33,20 +28,20 @@ var (
 	// In a monospace font, they're nearly identical.
 	styleWrapper = []byte("<span style=\"font-family: sans-serif\">$0</span>")
 	// earlyReplacements are raw text replacements that will happen before HTML is parsed or rendered.
-	earlyReplacements = []htmlReplacement{
+	earlyReplacements = map[string][]byte{
 		// Break some special characters out of monospace homogeneity
-		{re: regexp.MustCompile("—"), replacement: styleWrapper},       // Em dash
-		{re: regexp.MustCompile("&mdash;"), replacement: styleWrapper}, // Em dash
-		{re: regexp.MustCompile("–"), replacement: styleWrapper},       // En dash
-		{re: regexp.MustCompile("&ndash;"), replacement: styleWrapper}, // En dash
-		{re: regexp.MustCompile("ƒ"), replacement: styleWrapper},       // f-stop symbol
+		"—":       styleWrapper, // Em dash
+		"&mdash;": styleWrapper, // Em dash
+		"–":       styleWrapper, // En dash
+		"&ndash;": styleWrapper, // En dash
+		"ƒ":       styleWrapper, // f-stop symbol
 		// Figure dash is included but commented to call out that we do NOT want
 		// to change its font as it would violate the whole point of the figure dash to make its font
 		// different from surrounding digits.
-		// {re: regexp.MustCompile("‒"), replacement: styleWrapper}, // Figure dash
-		{re: regexp.MustCompile("―"), replacement: styleWrapper}, // Horizontal bar
-		{re: regexp.MustCompile("⁃"), replacement: styleWrapper}, // Hyphen bullet
-		{re: regexp.MustCompile("⁓"), replacement: styleWrapper}, // Swung dash
+		// "‒":       styleWrapper, // Figure dash
+		"―": styleWrapper, // Horizontal bar
+		"⁃": styleWrapper, // Hyphen bullet
+		"⁓": styleWrapper, // Swung dash
 
 	}
 	// lateReplacements are raw text replacements that will happen after HTML has been parsed.
@@ -122,12 +117,18 @@ func (doc *HTMLDocument) Load(r io.Reader) error {
 	if err != nil {
 		return fmt.Errorf("cannot load template frontmatter for %q: %w", doc.meta.SourcePath, err)
 	}
+	for old, new := range earlyReplacements {
+		re, err := regexp.Compile(old)
+		if err != nil {
+			return err
+		}
+		body = re.ReplaceAll(body, new)
+	}
 	root, err := html.Parse(bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	doc.root = root
-	doc.applyEarlyReplacements(doc.root, false)
 	if err := doc.Massage(); err != nil {
 		return err
 	}
@@ -151,22 +152,6 @@ func (doc *HTMLDocument) Load(r io.Reader) error {
 		return fmt.Errorf("cannot load forward from %T to %T: %w", doc, doc.next, err)
 	}
 	return nil
-}
-
-func (doc *HTMLDocument) applyEarlyReplacements(node *html.Node, inPre bool) {
-	if node.Type == html.ElementNode && node.DataAtom == atom.Pre {
-		inPre = true
-	}
-	if node.Type == html.TextNode && !inPre {
-		text := []byte(node.Data)
-		for _, replacement := range earlyReplacements {
-			text = replacement.re.ReplaceAll(text, replacement.replacement)
-		}
-		node.Data = string(text)
-	}
-	for child := node.FirstChild; child != nil; child = child.NextSibling {
-		doc.applyEarlyReplacements(child, inPre)
-	}
 }
 
 // Massage messes with loaded content to improve the page when it is ultimately rendered.
