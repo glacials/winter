@@ -19,6 +19,11 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
+type replacement struct {
+	pattern *regexp.Regexp
+	new     []byte
+}
+
 var (
 	// styleWrapper is used to surround any text that,
 	// if the entire page is in a monospace font,
@@ -44,6 +49,7 @@ var (
 		"⁓": styleWrapper, // Swung dash
 
 	}
+	earlyReplacementRegexes = mustCompileReplacements(earlyReplacements)
 	// lateReplacements are raw text replacements that will happen after HTML has been parsed.
 	lateReplacements = map[string][]byte{
 		"&#34;":  []byte("\""),
@@ -51,6 +57,60 @@ var (
 		"&quot;": []byte("\""),
 	}
 )
+
+func mustCompileReplacements(repls map[string][]byte) []replacement {
+	compiled := make([]replacement, 0, len(repls))
+	for pattern, repl := range repls {
+		re, err := regexp.Compile(pattern)
+		if err != nil {
+			panic(fmt.Sprintf("invalid replacement %q: %v", pattern, err))
+		}
+		compiled = append(compiled, replacement{pattern: re, new: repl})
+	}
+	return compiled
+}
+
+// applyEarlyReplacements applies early replacements to the HTML node tree.
+// It parses each replacement fragment into HTML before inserting it.
+func applyEarlyReplacements(root *html.Node) error {
+	var walk func(*html.Node, bool) error
+	walk = func(n *html.Node, inPre bool) error {
+		if n.Type == html.ElementNode && n.DataAtom == atom.Pre {
+			inPre = true
+		}
+		if n.Type == html.TextNode && !inPre {
+			if n.Parent == nil {
+				return nil
+			}
+			original := n.Data
+			updated := original
+			for _, repl := range earlyReplacementRegexes {
+				updated = repl.pattern.ReplaceAllString(updated, string(repl.new))
+			}
+			if updated != original {
+				fragments, err := html.ParseFragment(strings.NewReader(updated), n.Parent)
+				if err != nil {
+					return err
+				}
+				parent := n.Parent
+				for _, frag := range fragments {
+					parent.InsertBefore(frag, n)
+				}
+				parent.RemoveChild(n)
+				return nil
+			}
+		}
+		for child := n.FirstChild; child != nil; {
+			next := child.NextSibling
+			if err := walk(child, inPre); err != nil {
+				return err
+			}
+			child = next
+		}
+		return nil
+	}
+	return walk(root, false)
+}
 
 // HTMLDocument represents the HTML for a source file.
 //
@@ -117,18 +177,14 @@ func (doc *HTMLDocument) Load(r io.Reader) error {
 	if err != nil {
 		return fmt.Errorf("cannot load template frontmatter for %q: %w", doc.meta.SourcePath, err)
 	}
-	for old, new := range earlyReplacements {
-		re, err := regexp.Compile(old)
-		if err != nil {
-			return err
-		}
-		body = re.ReplaceAll(body, new)
-	}
 	root, err := html.Parse(bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
 	doc.root = root
+	if err := applyEarlyReplacements(doc.root); err != nil {
+		return err
+	}
 	if err := doc.Massage(); err != nil {
 		return err
 	}
