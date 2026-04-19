@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -95,13 +97,11 @@ func newBuildCmd() *cobra.Command {
 				server.RegisterOnShutdown(reloader.Shutdown)
 
 				go listenForCtrlC(stop, &server, &reloader)
-				go startFileServer(&server)
+				go startFileServer(&server, dist, baseURL.String())
 
 				if err := reloader.Watch(append(cfg.Src, ".")); err != nil {
 					return err
 				}
-
-				log.Printf("Serving %s on %s", dist, baseURL.String())
 
 				<-stop
 				return nil
@@ -135,12 +135,35 @@ func listenForCtrlC(stop chan struct{}, srvr *http.Server, reloader *Reloader) {
 	stop <- struct{}{}
 }
 
-func startFileServer(server *http.Server) {
-	if err := server.ListenAndServe(); err != nil {
-		if errors.Is(err, http.ErrServerClosed) {
-			// Expected when we call server.Shutdown()
-			return
-		}
+func startFileServer(server *http.Server, servedDir, baseURL string) {
+	listener, err := net.Listen("tcp", server.Addr)
+	if err != nil {
 		log.Fatal(fmt.Errorf("can't listen and serve: %w", err))
 	}
+	if err := serveWithListener(server, listener, servedDir, baseURL, os.Stdout); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func serveWithListener(
+	server *http.Server,
+	listener net.Listener,
+	servedDir, baseURL string,
+	out io.Writer,
+) error {
+	if _, err := fmt.Fprint(out, servingMessage(servedDir, baseURL)); err != nil {
+		return fmt.Errorf("can't announce server URL: %w", err)
+	}
+	if err := server.Serve(listener); err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			// Expected when we call server.Shutdown()
+			return nil
+		}
+		return fmt.Errorf("can't listen and serve: %w", err)
+	}
+	return nil
+}
+
+func servingMessage(servedDir, baseURL string) string {
+	return cliutils.Sprintf("Serving %s on %s", servedDir, baseURL) + "\n"
 }

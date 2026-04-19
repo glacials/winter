@@ -104,7 +104,7 @@ func (im *img) LoadEXIF() error {
 	}
 	defer f.Close()
 	if err := im.loadEXIF(f); err != nil {
-		return fmt.Errorf("cannot get camera for %q: %w", im.SourcePath, err)
+		return wrapErrorf(err, "cannot get camera for %q", im.SourcePath)
 	}
 	return nil
 }
@@ -120,11 +120,7 @@ func (im *img) thumbnailDir() string {
 
 func (im *img) Load(r io.Reader) error {
 	if err := im.loadEXIF(r); err != nil {
-		return fmt.Errorf(
-			"cannot get camera for %q: %w",
-			im.SourcePath,
-			err,
-		)
+		return wrapErrorf(err, "cannot get camera for %q", im.SourcePath)
 	}
 	srcf, err := os.Open(im.SourcePath)
 	if err != nil {
@@ -278,7 +274,7 @@ func (im *img) loadEXIF(r io.Reader) error {
 	}
 	camera, err := im.findGear(x, exif.Make, exif.Model)
 	if err != nil {
-		return fmt.Errorf("cannot get camera: %w", err)
+		return wrapErrorf(err, "cannot get camera")
 	}
 	exposure, err := x.Get(exif.ExposureTime)
 	if err != nil {
@@ -298,7 +294,7 @@ func (im *img) loadEXIF(r io.Reader) error {
 	}
 	lens, err := im.findGear(x, exif.LensMake, exif.LensModel)
 	if err != nil {
-		return fmt.Errorf("cannot get lens: %w", err)
+		return wrapErrorf(err, "cannot get lens")
 	}
 	timestamp, err := x.DateTime()
 	if err != nil {
@@ -490,15 +486,88 @@ func (im *img) findGear(
 	gearModelStr := sanitizeEXIFField(gearModel)
 	g, ok := im.cfg.GearByString(gearMakeStr, gearModelStr)
 	if !ok {
-		return nil, fmt.Errorf(
-			`a piece of gear with make=%q model=%q was used to photograph %s, but no such gear exists in your winter.yml; options were %v`,
+		return nil, errors.New(formatMissingGearError(
+			im.SourcePath,
 			gearMakeStr,
 			gearModelStr,
-			im.SourcePath,
 			im.cfg.Gear,
-		)
+		))
 	}
 	return g, nil
+}
+
+func formatMissingGearError(
+	sourcePath, gearMake, gearModel string,
+	configuredGear []Gear,
+) string {
+	var b strings.Builder
+	fmt.Fprintf(
+		&b,
+		"no matching gear entry in winter.yml for photo %q\n",
+		sourcePath,
+	)
+	fmt.Fprintf(&b, "wanted EXIF match:\n")
+	fmt.Fprintf(&b, "  make: %s\n", gearMake)
+	fmt.Fprintf(&b, "  model: %s\n", gearModel)
+	if len(configuredGear) == 0 {
+		b.WriteString("configured gear: none\n")
+		b.WriteString("add a matching item under gear: in winter.yml")
+		return b.String()
+	}
+	b.WriteString("configured gear:\n")
+	for _, gear := range configuredGear {
+		fmt.Fprintf(
+			&b,
+			"  - %s %s (exif.make=%s, exif.model=%s)\n",
+			gear.Make,
+			gear.Model,
+			formatEXIFValue(gear.EXIF.Make),
+			formatEXIFValue(gear.EXIF.Model),
+		)
+	}
+	b.WriteString("add a matching item under gear: in winter.yml")
+	return b.String()
+}
+
+func formatEXIFValue(value string) string {
+	if value == "" {
+		return "<unset>"
+	}
+	return strconv.Quote(value)
+}
+
+type wrappedError struct {
+	msg string
+	err error
+}
+
+func wrapErrorf(err error, format string, args ...any) error {
+	if err == nil {
+		return nil
+	}
+	return wrappedError{
+		msg: fmt.Sprintf(format, args...),
+		err: err,
+	}
+}
+
+func (e wrappedError) Error() string {
+	if strings.Contains(e.err.Error(), "\n") {
+		return e.msg + ":\n" + indentLines(e.err.Error(), "  ")
+	}
+	return e.msg + ": " + e.err.Error()
+}
+
+func (e wrappedError) Unwrap() error {
+	return e.err
+}
+
+func indentLines(s, prefix string) string {
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		lines[i] = prefix + line
+	}
+	return strings.Join(lines, "\n")
 }
 
 // exifCutSet is a string containing all the individual characters,

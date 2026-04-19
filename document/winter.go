@@ -390,7 +390,11 @@ func (s *Substructure) ExecuteAll(dist string) error {
 				dest := filepath.Join(dist, im.WebPath)
 				if _, statErr := os.Stat(dest); statErr == nil {
 					if err := im.LoadEXIF(); err != nil {
-						return fmt.Errorf("cannot load exif for %q: %w", im.SourcePath, err)
+						return wrapErrorf(
+							err,
+							"cannot load exif for %q",
+							im.SourcePath,
+						)
 					}
 					if err := im.loadThumbnailMetadata(); err != nil {
 						return fmt.Errorf("cannot load thumbnails for %q: %w", im.SourcePath, err)
@@ -406,7 +410,7 @@ func (s *Substructure) ExecuteAll(dist string) error {
 			defer srcf.Close()
 			dest := filepath.Join(dist, im.WebPath)
 			if err := im.Load(srcf); err != nil {
-				return fmt.Errorf("cannot load image: %w", err)
+				return wrapErrorf(err, "cannot load image")
 			}
 			if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 				return fmt.Errorf(
