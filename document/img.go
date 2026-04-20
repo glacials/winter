@@ -8,6 +8,7 @@ import (
 	"image/jpeg"
 	"io"
 	"log/slog"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -182,8 +183,15 @@ func exifFractionToDecimal(
 	if err != nil {
 		return 0, fmt.Errorf("can't get field %s: %w", field, err)
 	}
+	return exifFractionStringToDecimal(field, fraction.String())
+}
+
+func exifFractionStringToDecimal(
+	field exif.FieldName,
+	fraction string,
+) (float64, error) {
 	parts := strings.Split(
-		strings.Replace(fraction.String(), "\"", "", 2),
+		strings.Replace(fraction, "\"", "", 2),
 		"/",
 	)
 	numer, err := strconv.Atoi(parts[0])
@@ -200,14 +208,14 @@ func exifFractionToDecimal(
 	if err != nil {
 		return 0, fmt.Errorf(
 			"can't convert %s (denominator of %s, %s) to int: %w",
-			parts[0],
+			parts[1],
 			field,
 			fraction,
 			err,
 		)
 	}
 
-	return float64(numer) / float64(denom), nil
+	return math.Round((float64(numer)/float64(denom))*10) / 10, nil
 }
 
 // generatedPhotosAreFresh returns true if and only if the file at src has the same content as the last time this function was called.

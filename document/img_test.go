@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/rwcarlsen/goexif/exif"
 	"gotest.tools/v3/assert"
 )
 
@@ -99,4 +100,41 @@ func TestWrapErrorfMultiline(t *testing.T) {
 
 	assert.Equal(t, err.Error(), "outer:\n  inner:\n    line one\n    line two")
 	assert.Assert(t, errors.Is(err, root))
+}
+
+func TestExifFractionStringToDecimal(t *testing.T) {
+	tests := []struct {
+		name     string
+		fraction string
+		want     float64
+	}{
+		{
+			name:     "rounds thirds to one decimal place",
+			fraction: "1/3",
+			want:     0.3,
+		},
+		{
+			name:     "preserves one decimal place",
+			fraction: "355/10",
+			want:     35.5,
+		},
+		{
+			name:     "rounds to nearest tenth",
+			fraction: "11/8",
+			want:     1.4,
+		},
+		{
+			name:     "handles quoted fractions from exif tags",
+			fraction: "\"40/10\"",
+			want:     4,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := exifFractionStringToDecimal(exif.FNumber, tt.fraction)
+			assert.NilError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
