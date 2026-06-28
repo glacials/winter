@@ -165,5 +165,5 @@ func serveWithListener(
 }
 
 func servingMessage(servedDir, baseURL string) string {
-	return cliutils.Sprintf("Serving %s on %s", servedDir, baseURL) + "\n"
+	return fmt.Sprintf("Serving %s on %s\n", servedDir, baseURL)
 }

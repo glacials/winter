@@ -224,8 +224,9 @@ See the [top of this page](#toc) for an example.
 
 The kind of document. Possible values are `post`, `page`, `draft`.
 
-`post` documents are programmatically included in template functions.
-`page` and `draft` documents have no programmatic action taken on
+`post` documents are included in the `posts` template function.
+`draft` documents are included in the `drafts` template function.
+`page` documents have no programmatic action taken on
 them and will not be discoverable unless linked to.
 
 The default template set provided by `winter init` gives each a different visual treatment:
@@ -344,15 +345,25 @@ from most to least recent.
 
 See [Document Fields](#fields) for a list of fields available to documents.
 
+##### `drafts`
+
+Usage: `{{ range drafts }} ... {{ end }}`
+
+Returns a list of all documents with type `draft`,
+from most to least recent.
+
+See [Document Fields](#fields) for a list of fields available to documents.
+
 ##### `yearly`
 
 Usage: `{{ range yearly posts }}{{ .Year }}: {{ range .Documents.All }} ... {{ end }}{{ end }}`
 
 Returns a list of `year` types ordered from most to least recent.
-A `year` has two fields,
-`.Year` (integer)
+A `year` has three fields,
+`.Year` (integer),
+`.Undated` (boolean)
 and
-`.Documents` (array of documents).
-This allows templates to display posts sectioned by year.
+`.Documents` (collection of documents).
+This allows templates to display posts or drafts sectioned by year.
 
 See [Document Fields](#fields) for a list of fields available to documents.

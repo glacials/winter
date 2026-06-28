@@ -34,7 +34,7 @@ func TestServeWithListenerAnnouncesURL(t *testing.T) {
 		)
 	}()
 
-	want := servingMessage(dist, "http://localhost:8100")
+	want := "Serving dist on http://localhost:8100\n"
 	deadline := time.Now().Add(2 * time.Second)
 	for !strings.Contains(out.String(), want) {
 		if time.Now().After(deadline) {

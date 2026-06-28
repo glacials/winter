@@ -188,6 +188,7 @@ func (doc *TemplateDocument) funcmap(tmplPath string) (template.FuncMap, error) 
 				),
 			)
 		},
+		"drafts": doc.draftsFunc,
 		"posts":  doc.postsFunc,
 		"yearly": yearly,
 	}, nil
@@ -199,17 +200,30 @@ func (doc *TemplateDocument) galleryFunc(name string) []*img {
 	return doc.photos[name]
 }
 
+// draftsFunc is a function to be used by templates.
+// It retrieves a slice of documents of type draft.
+func (doc *TemplateDocument) draftsFunc() []Document {
+	return doc.documentsOfKind(draft)
+}
+
 // postsFunc is a function to be used by templates.
-// It retrieves a slice of metadatas for all documents of type post.
+// It retrieves a slice of documents of type post.
 func (doc *TemplateDocument) postsFunc() []Document {
-	posts := &documents{All: make([]Document, 0, len(doc.docs.All))}
+	return doc.documentsOfKind(post)
+}
+
+func (doc *TemplateDocument) documentsOfKind(k kind) []Document {
+	if doc.docs == nil {
+		return nil
+	}
+	docs := &documents{All: make([]Document, 0, len(doc.docs.All))}
 	for _, doc := range doc.docs.All {
-		if doc.Metadata().Kind == post {
-			posts.add(doc)
+		if doc.Metadata().Kind == k {
+			docs.add(doc)
 		}
 	}
-	sort.Sort(posts)
-	return posts.All
+	sort.Sort(docs)
+	return docs.All
 }
 
 // render is a function available to templates.
@@ -234,12 +248,17 @@ func yearly(docs []Document) years {
 	// groups is a map of year to data for that year.
 	groups := map[int]*year{}
 	for _, doc := range docs {
-		if doc.Metadata().Kind != post {
-			continue
+		y := 0
+		undated := doc.Metadata().CreatedAt.IsZero()
+		if !undated {
+			y = doc.Metadata().CreatedAt.Year()
 		}
-		y := doc.Metadata().CreatedAt.Year()
 		if _, ok := groups[y]; !ok {
-			groups[y] = &year{Documents: &documents{}, Year: y}
+			groups[y] = &year{
+				Documents: &documents{},
+				Undated:   undated,
+				Year:      y,
+			}
 		}
 		groups[y].Documents.add(doc)
 	}
@@ -308,6 +327,7 @@ func (a years) Swap(i, j int) {
 type year struct {
 	Year      int
 	Documents *documents
+	Undated   bool
 }
 
 type iconfunc func(graphic.SRC, graphic.Alt) (template.HTML, error)
