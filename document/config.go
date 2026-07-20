@@ -75,6 +75,11 @@ type Config struct {
 		// Must not be blank.
 		URL string `yaml:"url,omitempty"`
 	} `yaml:"production,omitempty"`
+	// PurchaseURLs maps image source paths relative to src/ to external pages
+	// where those images can be purchased.
+	//
+	// A matching URL is exposed to templates as the image's PurchaseURL field.
+	PurchaseURLs map[string]string `yaml:"purchase_urls,omitempty"`
 	// Since is the year the website was established,
 	// whether through Winter or otherwise.
 	// This is used as metadata for the RSS feed,

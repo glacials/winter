@@ -41,6 +41,24 @@ func TestNewIMG(t *testing.T) {
 	assert.NilError(t, im.Render(&b))
 }
 
+func TestNewIMGPurchaseURL(t *testing.T) {
+	const purchaseURL = "https://example.com/prints/photo"
+	c, err := newConfigFromBytes([]byte(`
+production:
+  url: twos.dev
+purchase_urls:
+  img/gallery/photo.JPG: ` + purchaseURL))
+	assert.NilError(t, err)
+
+	im, err := NewIMG("src/img/gallery/photo.JPG", c)
+	assert.NilError(t, err)
+	assert.Equal(t, purchaseURL, im.PurchaseURL)
+
+	unlisted, err := NewIMG("src/img/gallery/unlisted.JPG", c)
+	assert.NilError(t, err)
+	assert.Equal(t, "", unlisted.PurchaseURL)
+}
+
 func TestFormatMissingGearError(t *testing.T) {
 	configuredGear := []Gear{
 		{

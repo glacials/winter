@@ -243,6 +243,35 @@ Any file in `./src` can be templated using the format expressed in the
 [`text/template`](https://pkg.go.dev/text/template)
 Go library.
 
+#### Gallery Image Fields
+
+The `gallery` template function returns images from a named gallery:
+
+```template
+{{ range gallery "2025" }}
+  <img src="{{ .WebPath }}">
+{{ end }}
+```
+
+An image can optionally link to an external purchase page.
+Configure purchase URLs in `winter.yml`,
+keyed by each source image's path relative to `src/`:
+
+```yaml
+purchase_urls:
+  img/photography/2025/example.jpg: https://example.com/prints/example
+```
+
+The configured URL is available to templates as `{{ .PurchaseURL }}`:
+
+```template
+{{ with .PurchaseURL }}
+  <a href="{{ . }}">Buy a print</a>
+{{ end }}
+```
+
+When no purchase URL is configured, `.PurchaseURL` is an empty string.
+
 #### Document Fields
 
 The following fields are available to templates rendering documents.

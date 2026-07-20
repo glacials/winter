@@ -62,6 +62,12 @@ development:
 # Default: dist
 dist: dist
 
+# External pages where gallery images can be purchased,
+# keyed by each image's path relative to src/.
+#
+# purchase_urls:
+#   img/photography/example.jpg: https://example.com/prints/example
+
 # What directories should be scanned for source documents
 # (Markdown, HTML, Org, etc.)
 # that should be converted into pages for the generated website?

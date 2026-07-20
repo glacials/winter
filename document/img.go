@@ -39,8 +39,10 @@ type EXIF struct {
 type img struct {
 	EXIF
 
-	Alt        string
-	Thumbnails thumbnails
+	Alt string
+	// PurchaseURL is an optional external URL where the image can be purchased.
+	PurchaseURL string
+	Thumbnails  thumbnails
 	// SourcePath is the path to the image this gallery document was built around.
 	// It is relative to the repository root.
 	SourcePath string
@@ -84,7 +86,8 @@ func NewIMG(src string, cfg *Config) (*img, error) {
 		return nil, fmt.Errorf("cannot get relative path for photo: %w", err)
 	}
 	return &img{
-		SourcePath: src,
+		PurchaseURL: cfg.PurchaseURLs[filepath.ToSlash(relpath)],
+		SourcePath:  src,
 		WebPath: fmt.Sprintf(
 			"%s.webp",
 			strings.TrimSuffix(relpath, filepath.Ext(relpath)),

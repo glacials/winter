@@ -21,69 +21,74 @@
     },
     "Config": {
       "properties": {
-        "Author": {
+        "author": {
           "$ref": "#/$defs/Author",
           "description": "Author is the information for the website author. This is used in metadata such as that of the RSS feed."
         },
-        "Debug": {
+        "debug": {
           "type": "boolean",
           "description": "Debug is a flag that enables debug mode."
         },
-        "Development": {
+        "development": {
           "properties": {
-            "URL": {
+            "url": {
               "type": "string"
             }
           },
           "additionalProperties": false,
           "type": "object",
-          "required": [
-            "URL"
-          ],
           "description": "Development contains options specific to development. They have no impact when building for production."
         },
-        "Description": {
+        "description": {
           "type": "string",
           "description": "Description is the Description of the website. This is used as metadata for the RSS feed."
         },
-        "Dist": {
+        "dist": {
           "type": "string",
           "description": "Dist is the location the site will be built into, relative to the working directory. After a build, this directory is suitable for deployment to the web as a set of static files.\n\nIn other words, the path of any file in dist, relative to dist, is equivalent to the path component of the URL for that file.\n\nIf blank, defaults to ./dist."
         },
-        "Production": {
+        "known": {
           "properties": {
-            "URL": {
+            "urls": {
               "type": "string"
             }
           },
           "additionalProperties": false,
           "type": "object",
-          "required": [
-            "URL"
-          ]
+          "description": "Known helps the generated site follow the \"Cool URIs don't change\" rule by remembering certain facts about what the site looks like, and checking newly-generated sites against those facts."
         },
-        "Known": {
-          "properties": {
-            "URIs": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false,
-          "type": "object",
-          "required": [
-            "URIs"
-          ],
-          "description": "Known helps the generated site follow the \"Cool URIs don't change\" rule by remembering certain facts about what the site looks like, and checking newly-generated sites against that memory."
-        },
-        "Name": {
+        "name": {
           "type": "string",
           "description": "Name is the name of the website. This is used in various places in and out of templates."
         },
-        "Since": {
-          "type": "integer",
-          "description": "Since is the year the website was established, whether through Winter or otherwise. This is used as metadata for the RSS feed.\n\nTODO: Use this for copyright in page footer"
+        "gear": {
+          "items": {
+            "$ref": "#/$defs/Gear"
+          },
+          "type": "array",
+          "description": "Gear is an array of Gear objects, each describing a camera, lens, or other piece of gear whose information can be extracted from EXIF data.\n\nGear is used by Winter when processing photos to display photograph information, and provide links to purchase gear used in its creation."
         },
-        "Src": {
+        "production": {
+          "properties": {
+            "url": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object"
+        },
+        "purchase_urls": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object",
+          "description": "PurchaseURLs maps image source paths relative to src/ to external pages where those images can be purchased.\n\nA matching URL is exposed to templates as the image's PurchaseURL field."
+        },
+        "since": {
+          "type": "integer",
+          "description": "Since is the year the website was established, whether through Winter or otherwise. This is used as metadata for the RSS feed, and as a copyright notice when needed."
+        },
+        "srca": {
           "items": {
             "type": "string"
           },
@@ -93,19 +98,38 @@
       },
       "additionalProperties": false,
       "type": "object",
-      "required": [
-        "Author",
-        "Debug",
-        "Development",
-        "Description",
-        "Dist",
-        "Production",
-        "Known",
-        "Name",
-        "Since",
-        "Src"
-      ],
       "description": "Config is a configuration for the Winter build."
+    },
+    "Gear": {
+      "properties": {
+        "make": {
+          "type": "string",
+          "description": "Make is the value a photograph's EXIF data must have in the \"make\" field, whether camera or lens, for the photograph to be considered as having been taken with this piece of gear.\n\nBefore comparison, Winter will strip all trailing and leading spaces from both the EXIF data field and from this field. Then, a case-insensitive comparison is performed."
+        },
+        "model": {
+          "type": "string",
+          "description": "Make is the value a photograph's EXIF data must have in the \"model\" field, whether camera or lens, for the photograph to be considered as having been taken with this piece of gear.\n\nBefore comparison, Winter will strip all trailing and leading spaces from both the EXIF data field and from this field. Then, a case-insensitive comparison is performed."
+        },
+        "link": {
+          "type": "string",
+          "description": "Link is a URL (beginning in https://) at which a user can purchase or read more about this piece of gear."
+        },
+        "exif": {
+          "properties": {
+            "make": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "type": "object",
+          "description": "EXIF specifies what EXIF data a photograph must have in order to be identified as having been taken with this piece of gear."
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
     }
   }
 }

@@ -38,7 +38,7 @@ func newGenerateCommand() *cobra.Command {
 // runGenerateCmd performs execution of the winter generate command.
 // It is separate from the corresponding [cobra.Command] function for easy testing.
 func runGenerateCmd(in io.Reader, out io.Writer) error {
-	reflector := jsonschema.Reflector{}
+	reflector := jsonschema.Reflector{FieldNameTag: "yaml"}
 	if err := reflector.AddGoComments("twos.dev/winter", "./document"); err != nil {
 		return err
 	}
