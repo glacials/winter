@@ -62,7 +62,7 @@ development:
 # Default: dist
 dist: dist
 
-# External pages where gallery images can be purchased,
+# Optional overrides for gallery images' embedded XMP Licensor URLs,
 # keyed by each image's path relative to src/.
 #
 # purchase_urls:

@@ -27,7 +27,14 @@ func TestExecuteAllUsesCachedImageMetadata(t *testing.T) {
 
 	srcImg := filepath.Join("src", "img", "2023", "trip", "IMG_0385.JPG")
 	assert.NilError(t, os.MkdirAll(filepath.Dir(srcImg), 0o755))
-	assert.NilError(t, copyFile(filepath.Join(cwd, "testdata", "IMG_0385.JPG"), srcImg))
+	sourceData, err := os.ReadFile(filepath.Join(cwd, "testdata", "IMG_0385.JPG"))
+	assert.NilError(t, err)
+	const wantAlt = "Cached embedded alt text"
+	const wantPurchaseURL = "https://example.com/cached-purchase"
+	packet := xmpPacket(`
+<core:AltTextAccessibility><rdf:Alt><rdf:li xml:lang="x-default">` + wantAlt + `</rdf:li></rdf:Alt></core:AltTextAccessibility>
+<plus:Licensor><rdf:Bag><rdf:li rdf:parseType="Resource"><plus:LicensorURL>` + wantPurchaseURL + `</plus:LicensorURL></rdf:li></rdf:Bag></plus:Licensor>`)
+	assert.NilError(t, os.WriteFile(srcImg, addXMPToJPEG(sourceData, []byte(packet)), 0o644))
 
 	distImg := filepath.Join("dist", "img", "2023", "trip", "IMG_0385.webp")
 	assert.NilError(t, os.MkdirAll(filepath.Dir(distImg), 0o755))
@@ -80,6 +87,8 @@ func TestExecuteAllUsesCachedImageMetadata(t *testing.T) {
 	gallery := s.galleries["trip"]
 	assert.Assert(t, len(gallery) == 1)
 	assert.Assert(t, len(gallery[0].Thumbnails) > 0)
+	assert.Equal(t, gallery[0].Alt, wantAlt)
+	assert.Equal(t, gallery[0].PurchaseURL, wantPurchaseURL)
 }
 
 func copyFile(src, dest string) error {

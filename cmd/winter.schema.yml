@@ -82,7 +82,7 @@
             "type": "string"
           },
           "type": "object",
-          "description": "PurchaseURLs maps image source paths relative to src/ to external pages where those images can be purchased.\n\nA matching URL is exposed to templates as the image's PurchaseURL field."
+          "description": "PurchaseURLs maps image source paths relative to src/ to external pages where those images can be purchased. A configured URL overrides the image's embedded XMP Licensor URL.\n\nA matching URL is exposed to templates as the image's PurchaseURL field."
         },
         "since": {
           "type": "integer",

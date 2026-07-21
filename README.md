@@ -253,24 +253,43 @@ The `gallery` template function returns images from a named gallery:
 {{ end }}
 ```
 
-An image can optionally link to an external purchase page.
-Configure purchase URLs in `winter.yml`,
-keyed by each source image's path relative to `src/`:
+Winter reads two optional fields from standard XMP metadata embedded in source
+JPEGs:
 
-```yaml
-purchase_urls:
-  img/photography/2025/example.jpg: https://example.com/prints/example
+- `Iptc4xmpCore:AltTextAccessibility` is available as `{{ .Alt }}`.
+- The first `plus:LicensorURL` inside `plus:Licensor` is available as
+  `{{ .PurchaseURL }}`.
+
+For example, [ExifTool](https://exiftool.org/) can add both fields:
+
+```sh
+exiftool \
+  -XMP-iptcCore:AltTextAccessibility-x-default="A concise description." \
+  -XMP-plus:LicensorURL="https://example.com/purchase/example" \
+  src/img/photography/example.jpg
 ```
 
-The configured URL is available to templates as `{{ .PurchaseURL }}`:
+Use the fields in a template like this:
 
 ```template
+<img alt="{{ .Alt }}" src="{{ .WebPath }}">
+
 {{ with .PurchaseURL }}
-  <a href="{{ . }}">Buy a print</a>
+  <a href="{{ . }}">Purchase</a>
 {{ end }}
 ```
 
-When no purchase URL is configured, `.PurchaseURL` is an empty string.
+An explicit purchase URL can instead be configured in `winter.yml`, keyed by
+the source image's path relative to `src/`:
+
+```yaml
+purchase_urls:
+  img/photography/example.jpg: https://example.com/purchase/example
+```
+
+Configuration overrides an embedded Licensor URL. Missing metadata is valid and
+leaves the corresponding field empty. Winter reads source metadata for
+templates but does not copy it into generated WebPs or thumbnails.
 
 #### Document Fields
 

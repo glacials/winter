@@ -389,10 +389,10 @@ func (s *Substructure) ExecuteAll(dist string) error {
 			if fresh {
 				dest := filepath.Join(dist, im.WebPath)
 				if _, statErr := os.Stat(dest); statErr == nil {
-					if err := im.LoadEXIF(); err != nil {
+					if err := im.loadMetadataFromSource(); err != nil {
 						return wrapErrorf(
 							err,
-							"cannot load exif for %q",
+							"cannot load metadata for %q",
 							im.SourcePath,
 						)
 					}

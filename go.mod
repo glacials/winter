@@ -7,6 +7,7 @@ require (
 	github.com/adrg/frontmatter v0.2.0
 	github.com/adrg/xdg v0.4.0
 	github.com/alecthomas/chroma v0.10.0
+	github.com/bep/imagemeta v0.12.1
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386
 	github.com/gorilla/feeds v1.1.1
@@ -39,6 +40,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 )
 
 require (
@@ -52,7 +54,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mholt/archiver v3.1.1+incompatible // indirect
 	github.com/mitranim/gg v0.0.14 // indirect

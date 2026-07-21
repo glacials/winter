@@ -49,8 +49,10 @@ type img struct {
 	// WebPath is the path component of the URL to the image as it will exist after building.
 	WebPath string
 
-	cfg   *Config
-	photo image.Image
+	cfg                      *Config
+	configuredPurchaseURL    string
+	hasConfiguredPurchaseURL bool
+	photo                    image.Image
 }
 
 type thumbnail struct {
@@ -85,9 +87,12 @@ func NewIMG(src string, cfg *Config) (*img, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot get relative path for photo: %w", err)
 	}
+	purchaseURL, hasPurchaseURL := cfg.PurchaseURLs[filepath.ToSlash(relpath)]
 	return &img{
-		PurchaseURL: cfg.PurchaseURLs[filepath.ToSlash(relpath)],
-		SourcePath:  src,
+		PurchaseURL:              purchaseURL,
+		SourcePath:               src,
+		configuredPurchaseURL:    purchaseURL,
+		hasConfiguredPurchaseURL: hasPurchaseURL,
 		WebPath: fmt.Sprintf(
 			"%s.webp",
 			strings.TrimSuffix(relpath, filepath.Ext(relpath)),
@@ -113,6 +118,39 @@ func (im *img) LoadEXIF() error {
 	return nil
 }
 
+// loadMetadataFromSource reloads all metadata Winter exposes for im.
+//
+// Purchase URLs configured in winter.yml explicitly override embedded XMP.
+func (im *img) loadMetadataFromSource() error {
+	f, err := os.Open(im.SourcePath)
+	if err != nil {
+		return fmt.Errorf("can't read %q: %w", im.SourcePath, err)
+	}
+	defer f.Close()
+
+	if err := im.loadEXIF(f); err != nil {
+		return wrapErrorf(err, "cannot get camera for %q", im.SourcePath)
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return fmt.Errorf("cannot rewind %q to read XMP: %w", im.SourcePath, err)
+	}
+	metadata, err := loadPhotoXMP(f)
+	if err != nil {
+		return wrapErrorf(err, "cannot read photo metadata from %q", im.SourcePath)
+	}
+
+	im.applyPhotoXMP(metadata)
+	return nil
+}
+
+func (im *img) applyPhotoXMP(metadata photoXMP) {
+	im.Alt = metadata.Alt
+	im.PurchaseURL = metadata.PurchaseURL
+	if im.hasConfiguredPurchaseURL {
+		im.PurchaseURL = im.configuredPurchaseURL
+	}
+}
+
 func (im *img) thumbnailDir() string {
 	return filepath.Dir(strings.Replace(
 		filepath.Join(im.cfg.Dist, im.WebPath),
@@ -123,15 +161,10 @@ func (im *img) thumbnailDir() string {
 }
 
 func (im *img) Load(r io.Reader) error {
-	if err := im.loadEXIF(r); err != nil {
-		return wrapErrorf(err, "cannot get camera for %q", im.SourcePath)
+	if err := im.loadMetadataFromSource(); err != nil {
+		return err
 	}
-	srcf, err := os.Open(im.SourcePath)
-	if err != nil {
-		return fmt.Errorf("can't read %q: %w", im.SourcePath, err)
-	}
-	defer srcf.Close()
-	srcPhoto, err := jpeg.Decode(srcf)
+	srcPhoto, err := jpeg.Decode(r)
 	if err != nil {
 		return fmt.Errorf(
 			"cannot decode photo %q (maybe not an image?): %w",
