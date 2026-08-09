@@ -34,7 +34,9 @@ func gitRun(directory string, args ...string) error {
 }
 
 func ensurePublishWorktree(projectRoot, distPath, remote, branch string) error {
-	if err := gitRun(projectRoot, "fetch", remote, branch); err != nil {
+	remoteRef := remote + "/" + branch
+	fetchRefspec := "refs/heads/" + branch + ":refs/remotes/" + remoteRef
+	if err := gitRun(projectRoot, "fetch", remote, fetchRefspec); err != nil {
 		return fmt.Errorf("cannot fetch deployment branch %s/%s: %w", remote, branch, err)
 	}
 	absDist, err := canonicalPath(distPath)
@@ -57,7 +59,6 @@ func ensurePublishWorktree(projectRoot, distPath, remote, branch string) error {
 			break
 		}
 	}
-	remoteRef := remote + "/" + branch
 	if !found {
 		entries, err := os.ReadDir(absDist)
 		if err == nil && len(entries) != 0 {
