@@ -3,7 +3,6 @@ package document // import "twos.dev/winter/document"
 import (
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"image"
 	"io"
 	"log/slog"
@@ -14,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/adrg/xdg"
 	"github.com/nickalie/go-webpbin"
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/mknote"
@@ -254,54 +252,6 @@ func exifFractionStringToDecimal(
 	}
 
 	return math.Round((float64(numer)/float64(denom))*10) / 10, nil
-}
-
-// generatedPhotosAreFresh returns true if and only if the file at src has the same content as the last time this function was called.
-//
-// The XDG cache directory for Winter is used to store state.
-// To empty it, run winter clean.
-func (d *img) generatedPhotosAreFresh(src string) (bool, error) {
-	sourceFile, err := os.Open(src)
-	if err != nil {
-		return false, fmt.Errorf("can't open photo at path `%s`: %w", src, err)
-	}
-	defer sourceFile.Close()
-	hash := fnv.New32()
-	_, err = io.Copy(hash, sourceFile)
-	if err != nil {
-		return false, fmt.Errorf("cannot compute hash for %q: %w", src, err)
-	}
-
-	sumPath, err := xdg.CacheFile(
-		fmt.Sprintf(
-			"%s.sum",
-			filepath.Join(AppName, "generated", "img", filepath.Base(src)),
-		),
-	)
-	if err != nil {
-		return false, fmt.Errorf("cannot find Winter cache: %w", err)
-	}
-	newSum := hash.Sum32()
-	oldSum, err := os.ReadFile(sumPath)
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return false, fmt.Errorf("cannot read old sum at %q: %w", oldSum, err)
-		}
-	}
-	if fmt.Sprintf("%d", newSum) == string(oldSum) {
-		return true, nil
-	}
-	if err := os.MkdirAll(filepath.Dir(sumPath), 0o755); err != nil {
-		return false, fmt.Errorf(
-			"cann't make thumbnail directory for sums %q: %w",
-			filepath.Dir(sumPath),
-			err,
-		)
-	}
-	if err := os.WriteFile(sumPath, []byte(fmt.Sprintf("%d", newSum)), 0o644); err != nil {
-		return false, fmt.Errorf("cannot write hash for %q: %w", src, err)
-	}
-	return false, nil
 }
 
 // loadEXIF extracts the EXIF string

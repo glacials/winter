@@ -82,12 +82,15 @@ func Execute(version string) {
 		"output fewer details",
 	)
 
+	rootCmd.AddCommand(newAuditCmd())
 	rootCmd.AddCommand(newBuildCmd())
+	rootCmd.AddCommand(newCheckCmd())
 	rootCmd.AddCommand(newCleanCmd())
 	rootCmd.AddCommand(newConfigCmd())
 	rootCmd.AddCommand(newFreezeCmd())
 	rootCmd.AddCommand(newGenerateCommand())
 	rootCmd.AddCommand(newInitCmd())
+	rootCmd.AddCommand(newPublishCmd())
 	rootCmd.AddCommand(newServeCmd())
 	rootCmd.AddCommand(newTestCmd())
 	err := rootCmd.ExecuteContext(context.Background())

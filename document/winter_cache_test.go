@@ -1,15 +1,12 @@
 package document
 
 import (
-	"fmt"
-	"hash/fnv"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/adrg/xdg"
 	"gotest.tools/v3/assert"
 )
 
@@ -22,8 +19,6 @@ func TestExecuteAllUsesCachedImageMetadata(t *testing.T) {
 	t.Cleanup(func() {
 		_ = os.Chdir(cwd)
 	})
-
-	t.Setenv("XDG_CACHE_HOME", filepath.Join(tmp, "cache"))
 
 	srcImg := filepath.Join("src", "img", "2023", "trip", "IMG_0385.JPG")
 	assert.NilError(t, os.MkdirAll(filepath.Dir(srcImg), 0o755))
@@ -42,16 +37,6 @@ func TestExecuteAllUsesCachedImageMetadata(t *testing.T) {
 
 	oldTime := time.Unix(1, 0)
 	assert.NilError(t, os.Chtimes(distImg, oldTime, oldTime))
-
-	sumPath, err := xdg.CacheFile(fmt.Sprintf("%s.sum", filepath.Join(AppName, "generated", "img", filepath.Base(srcImg))))
-	assert.NilError(t, err)
-	sum := fnv.New32()
-	data, err := os.ReadFile(srcImg)
-	assert.NilError(t, err)
-	_, err = sum.Write(data)
-	assert.NilError(t, err)
-	assert.NilError(t, os.MkdirAll(filepath.Dir(sumPath), 0o755))
-	assert.NilError(t, os.WriteFile(sumPath, []byte(fmt.Sprintf("%d", sum.Sum32())), 0o644))
 
 	cfg := &Config{
 		Description: "desc",
@@ -74,6 +59,21 @@ func TestExecuteAllUsesCachedImageMetadata(t *testing.T) {
 
 	s, err := NewSubstructure(cfg)
 	assert.NilError(t, err)
+	gallery := s.galleries["trip"]
+	assert.Assert(t, len(gallery) == 1)
+	im := gallery[0]
+	assert.NilError(t, im.loadMetadataFromSource())
+	assert.NilError(t, im.loadThumbnailMetadata())
+	for _, thumb := range im.Thumbnails {
+		dest := filepath.Join(cfg.Dist, thumb.WebPath)
+		assert.NilError(t, os.MkdirAll(filepath.Dir(dest), 0o755))
+		assert.NilError(t, copyFile(filepath.Join(cwd, "..", "testdata", filepath.Base(thumb.WebPath)), dest))
+	}
+	hash, err := fileHash(srcImg)
+	assert.NilError(t, err)
+	manifest := newBuildManifest()
+	manifest.record(srcImg, hash, imageGeneratorKey, "image", imageOutputPaths(im))
+	assert.NilError(t, manifest.save(cfg.Dist))
 
 	before, err := os.Stat(distImg)
 	assert.NilError(t, err)
@@ -84,8 +84,6 @@ func TestExecuteAllUsesCachedImageMetadata(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Assert(t, after.ModTime().Equal(before.ModTime()), "cached build should not rewrite image")
 
-	gallery := s.galleries["trip"]
-	assert.Assert(t, len(gallery) == 1)
 	assert.Assert(t, len(gallery[0].Thumbnails) > 0)
 	assert.Equal(t, gallery[0].Alt, wantAlt)
 	assert.Equal(t, gallery[0].PurchaseURL, wantPurchaseURL)

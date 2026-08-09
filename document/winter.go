@@ -136,7 +136,10 @@
 package document // import "twos.dev/winter/document"
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/url"
 	"os"
@@ -251,6 +254,16 @@ func (s *Substructure) ImageCount() int {
 //
 // To also build downstream dependencies, use [Rebuild] instead.
 func (s *Substructure) Build(doc Document) error {
+	if _, ok := doc.(*StaticDocument); ok {
+		return s.buildWWW(doc)
+	}
+	if err := s.load(doc); err != nil {
+		return err
+	}
+	return s.render(doc)
+}
+
+func (s *Substructure) load(doc Document) error {
 	r, err := os.Open(doc.Metadata().SourcePath)
 	if err != nil {
 		return fmt.Errorf(
@@ -269,7 +282,10 @@ func (s *Substructure) Build(doc Document) error {
 			err,
 		)
 	}
+	return nil
+}
 
+func (s *Substructure) render(doc Document) error {
 	if err := s.buildWWW(doc); err != nil {
 		return err
 	}
@@ -283,24 +299,34 @@ func (s *Substructure) Build(doc Document) error {
 func (s *Substructure) buildWWW(doc Document) error {
 	dest := filepath.Join(s.cfg.Dist, doc.Metadata().WebPath)
 	slog.Debug(fmt.Sprintf("  → %s", pad(dest)))
+	if staticDoc, ok := doc.(*StaticDocument); ok {
+		if err := copyFileIfChanged(staticDoc.SourcePath, dest); err != nil {
+			return fmt.Errorf(
+				"cannot copy static file %q to %q: %w",
+				staticDoc.SourcePath,
+				dest,
+				err,
+			)
+		}
+		return nil
+	}
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return fmt.Errorf("cannot make directory structure for %q: %w", dest, err)
 	}
-	w, err := os.Create(dest)
-	if err != nil {
+	var buf bytes.Buffer
+	if err := doc.Render(&buf); err != nil {
+		return fmt.Errorf(
+			"cannot render %q for building: %w",
+			doc.Metadata().SourcePath,
+			err,
+		)
+	}
+	if err := writeFileIfChanged(dest, buf.Bytes(), 0o644); err != nil {
 		return fmt.Errorf(
 			"cannot build %q (web path %q) into %q: %w",
 			doc.Metadata().SourcePath,
 			doc.Metadata().WebPath,
 			dest,
-			err,
-		)
-	}
-	defer w.Close()
-	if err := doc.Render(w); err != nil {
-		return fmt.Errorf(
-			"cannot render %q for building: %w",
-			doc.Metadata().SourcePath,
 			err,
 		)
 	}
@@ -322,18 +348,9 @@ func (s *Substructure) buildGemini(doc Document) error {
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return fmt.Errorf("cannot make directory structure for %q: %w", dest, err)
 	}
-	w, err := os.Create(dest)
-	if err != nil {
-		return fmt.Errorf(
-			"cannot build %q into %s: %w",
-			doc.Metadata().SourcePath,
-			filepath.Join(dest, doc.Metadata().WebPath),
-			err,
-		)
-	}
-	defer w.Close()
+	var buf bytes.Buffer
 	if gr, ok := doc.(GeminiRenderer); ok {
-		if err := gr.RenderGemini(w); err != nil {
+		if err := gr.RenderGemini(&buf); err != nil {
 			return fmt.Errorf(
 				"cannot render %q for building: %w",
 				doc.Metadata().SourcePath,
@@ -341,7 +358,86 @@ func (s *Substructure) buildGemini(doc Document) error {
 			)
 		}
 	}
+	if err := writeFileIfChanged(dest, buf.Bytes(), 0o644); err != nil {
+		return fmt.Errorf(
+			"cannot build %q into %s: %w",
+			doc.Metadata().SourcePath,
+			filepath.Join(dest, doc.Metadata().WebPath),
+			err,
+		)
+	}
 	return nil
+}
+
+func writeFileIfChanged(path string, contents []byte, mode os.FileMode) error {
+	existing, err := os.ReadFile(path)
+	if err == nil && bytes.Equal(existing, contents) {
+		return nil
+	}
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".winter-write-*")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if err := tmp.Chmod(mode); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(contents); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, path)
+}
+
+func copyFileIfChanged(source, destination string) error {
+	sourceHash, err := fileHash(source)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(destination); err == nil {
+		destinationHash, err := fileHash(destination)
+		if err != nil {
+			return err
+		}
+		if sourceHash == destinationHash {
+			return nil
+		}
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
+		return err
+	}
+	src, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	tmp, err := os.CreateTemp(filepath.Dir(destination), ".winter-copy-*")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if _, err := io.Copy(tmp, src); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, destination)
 }
 
 // DocBySourcePath returns the document that originated from the file at path.
@@ -359,10 +455,15 @@ func (s *Substructure) DocBySourcePath(path string) (doc Document, ok bool) {
 // ExecuteAll builds all documents known to the substructure,
 // as well as any site-scoped non-documents such as RSS feeds.
 func (s *Substructure) ExecuteAll(dist string) error {
+	manifest, err := loadBuildManifest(dist)
+	if err != nil {
+		return err
+	}
+	manifest.markAllOrphaned()
+
 	builtIMGs := map[string]*img{}
 	for _, gallery := range s.galleries {
 		for _, im := range gallery {
-			slog.Info(fmt.Sprintf("Building image %s.", im.SourcePath))
 			if prev, ok := builtIMGs[im.WebPath]; ok {
 				return fmt.Errorf(
 					"both %s (%T) and %q (%T) wanted to build to %q/%q; remove one",
@@ -374,35 +475,24 @@ func (s *Substructure) ExecuteAll(dist string) error {
 					im.WebPath,
 				)
 			}
-			fresh, err := im.generatedPhotosAreFresh(im.SourcePath)
+			hash, err := fileHash(im.SourcePath)
 			if err != nil {
-				return fmt.Errorf(
-					"cannot check freshness of %q: %w",
-					im.SourcePath,
-					err,
-				)
+				return err
 			}
-			// If the source is fresh but the target file doesn't exist in dist,
-			// we still need to (re)generate it. Only skip when both are true:
-			// cache says it's fresh AND it actually exists.
-			// (e.g. the user may `rm -rf dist/`.)
-			if fresh {
-				dest := filepath.Join(dist, im.WebPath)
-				if _, statErr := os.Stat(dest); statErr == nil {
-					if err := im.loadMetadataFromSource(); err != nil {
-						return wrapErrorf(
-							err,
-							"cannot load metadata for %q",
-							im.SourcePath,
-						)
-					}
-					if err := im.loadThumbnailMetadata(); err != nil {
-						return fmt.Errorf("cannot load thumbnails for %q: %w", im.SourcePath, err)
-					}
-					builtIMGs[im.WebPath] = im
-					continue
-				}
+			if err := im.loadMetadataFromSource(); err != nil {
+				return wrapErrorf(err, "cannot load metadata for %q", im.SourcePath)
 			}
+			if err := im.loadThumbnailMetadata(); err != nil {
+				return fmt.Errorf("cannot load thumbnails for %q: %w", im.SourcePath, err)
+			}
+			outputs := imageOutputPaths(im)
+			if manifest.isFresh(im.SourcePath, hash, imageGeneratorKey, outputs, dist) {
+				slog.Debug(fmt.Sprintf("Reusing image %s.", im.SourcePath))
+				manifest.record(im.SourcePath, hash, imageGeneratorKey, "image", outputs)
+				builtIMGs[im.WebPath] = im
+				continue
+			}
+			slog.Info(fmt.Sprintf("Building image %s.", im.SourcePath))
 			srcf, err := os.Open(im.SourcePath)
 			if err != nil {
 				return fmt.Errorf("cannot open image: %w", err)
@@ -422,7 +512,7 @@ func (s *Substructure) ExecuteAll(dist string) error {
 					err,
 				)
 			}
-			destf, err := os.Create(dest)
+			destf, err := os.CreateTemp(filepath.Dir(dest), ".winter-image-*")
 			if err != nil {
 				return fmt.Errorf(
 					"cannot write image %q to %q during ExecuteAll: %w",
@@ -431,6 +521,8 @@ func (s *Substructure) ExecuteAll(dist string) error {
 					err,
 				)
 			}
+			tmpDest := destf.Name()
+			defer os.Remove(tmpDest)
 			renderErr := im.Render(destf)
 			closeErr := destf.Close()
 			if renderErr != nil {
@@ -439,16 +531,27 @@ func (s *Substructure) ExecuteAll(dist string) error {
 			if closeErr != nil {
 				return fmt.Errorf("cannot close image %q: %w", dest, closeErr)
 			}
-			if err := s.Rebuild(im.SourcePath); err != nil {
-				return fmt.Errorf(
-					"cannot rebuild image %q during ExecuteAll: %w",
-					im.SourcePath,
-					err,
-				)
+			if err := os.Rename(tmpDest, dest); err != nil {
+				return fmt.Errorf("cannot publish image %q to %q: %w", im.SourcePath, dest, err)
 			}
+			manifest.record(im.SourcePath, hash, imageGeneratorKey, "image", imageOutputPaths(im))
 			builtIMGs[im.WebPath] = im
 		}
 	}
+
+	// Load every text document before rendering any of them. Templates that
+	// list posts, drafts, or galleries then see the complete metadata graph,
+	// while each document only needs to be rendered once.
+	for _, doc := range s.docs.All {
+		if _, ok := doc.(*StaticDocument); ok {
+			continue
+		}
+		if err := s.load(doc); err != nil {
+			return fmt.Errorf("cannot load %q during ExecuteAll: %w", doc.Metadata().SourcePath, err)
+		}
+	}
+	sort.Sort(s.docs)
+
 	builtDocs := map[string]Document{}
 	for _, doc := range s.docs.All {
 		if prev, ok := builtDocs[doc.Metadata().WebPath]; ok {
@@ -462,12 +565,26 @@ func (s *Substructure) ExecuteAll(dist string) error {
 				doc.Metadata().WebPath,
 			)
 		}
-		if err := s.Rebuild(doc.Metadata().SourcePath); err != nil {
-			return fmt.Errorf(
-				"cannot rebuild %q during ExecuteAll: %w",
-				doc.Metadata().SourcePath,
-				err,
-			)
+		hash, err := fileHash(doc.Metadata().SourcePath)
+		if err != nil {
+			return err
+		}
+		outputs := outputPaths(doc)
+		if _, ok := doc.(*StaticDocument); ok {
+			if manifest.isFresh(doc.Metadata().SourcePath, hash, staticGeneratorKey, outputs, dist) {
+				manifest.record(doc.Metadata().SourcePath, hash, staticGeneratorKey, "static", outputs)
+				builtDocs[doc.Metadata().WebPath] = doc
+				continue
+			}
+			if err := s.Build(doc); err != nil {
+				return fmt.Errorf("cannot build static file %q: %w", doc.Metadata().SourcePath, err)
+			}
+			manifest.record(doc.Metadata().SourcePath, hash, staticGeneratorKey, "static", outputs)
+		} else {
+			if err := s.render(doc); err != nil {
+				return fmt.Errorf("cannot render %q during ExecuteAll: %w", doc.Metadata().SourcePath, err)
+			}
+			manifest.record(doc.Metadata().SourcePath, hash, documentGeneratorKey, "document", outputs)
 		}
 		builtDocs[doc.Metadata().WebPath] = doc
 	}
@@ -475,8 +592,10 @@ func (s *Substructure) ExecuteAll(dist string) error {
 	if err := s.writefeed(); err != nil {
 		return fmt.Errorf("cannot generate feed: %w", err)
 	}
-
-	return s.validateURIsDidNotChange(dist)
+	if err := s.validateURIsDidNotChange(dist); err != nil {
+		return err
+	}
+	return manifest.save(dist)
 }
 
 // Rebuild rebuilds the document or template at the given path.

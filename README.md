@@ -103,6 +103,41 @@ content from `src/img`, and templates from `src/template`. If `--source` is
 specified, Winter will also build text content from that file or directory.
 `--source` can be specified any number of times.
 
+Builds are incremental and append-only. Winter stores content hashes and output
+ownership in `dist/.winter/manifest.json`, reuses unchanged generated images and
+static files, and only rewrites rendered documents whose bytes changed. If a
+source file disappears, its old public output remains in place until it is
+removed deliberately.
+
+#### `winter check`
+
+Usage: `winter check`
+
+Check the built site for broken local links and resources. This includes HTML
+links, images, `srcset` candidates, scripts, stylesheets, CSS `url()` values, and
+links to fragments within HTML pages. External URLs are not requested.
+
+#### `winter publish`
+
+Usage: `winter publish`
+
+Incrementally build and check the site, commit added and modified files in the
+`dist` worktree, and push its `gh-pages` branch. Winter never stages deletions
+during publishing. By default the source worktree must be clean; CI jobs that
+generate a source input can opt into `--allow-dirty`.
+
+The first run creates `dist` as a linked worktree from `origin/gh-pages` if
+needed. The deployment branch and remote can be changed with `--branch` and
+`--remote`, and `--no-push` stops after creating the local deployment commit.
+
+#### `winter audit`
+
+Usage: `winter audit`
+
+Perform a deliberately slow clean build in a temporary directory and compare
+all current generated outputs with persistent `dist`. Preserved legacy outputs
+whose sources no longer exist are allowed.
+
 #### `winter freeze`
 
 <!-- Don't change manually here. Change `twos.dev/winter/cmd` then paste changes here. -->

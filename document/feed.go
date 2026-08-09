@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/url"
-	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,6 +16,15 @@ const favicon = "/favicon.ico"
 func (s *Substructure) writefeed() error {
 	now := time.Now()
 	siteURL := url.URL{Scheme: "https", Host: s.cfg.Production.URL}
+	updated := time.Date(2022, 4, 7, 0, 0, 0, 0, time.UTC)
+	for _, doc := range s.docs.All {
+		if doc.Metadata().CreatedAt.After(updated) {
+			updated = doc.Metadata().CreatedAt
+		}
+		if doc.Metadata().UpdatedAt.After(updated) {
+			updated = doc.Metadata().UpdatedAt
+		}
+	}
 
 	feed := feeds.Feed{
 		Author: &feeds.Author{
@@ -36,7 +45,7 @@ func (s *Substructure) writefeed() error {
 		Items:   []*feeds.Item{},
 		Link:    &feeds.Link{Href: siteURL.String()},
 		Title:   s.cfg.Name,
-		Updated: now,
+		Updated: updated,
 	}
 	atomFeed := (&feeds.Atom{Feed: &feed}).AtomFeed()
 	atomFeed.Icon = (&url.URL{Scheme: "https", Host: s.cfg.Production.URL, Path: favicon}).String()
@@ -70,20 +79,19 @@ func (s *Substructure) writefeed() error {
 		})
 	}
 
-	atom, err := os.Create("dist/feed.atom")
-	if err != nil {
-		return fmt.Errorf("cannot create Atom feed: %w", err)
-	}
-	if err := feed.WriteAtom(atom); err != nil {
+	var atom bytes.Buffer
+	if err := feed.WriteAtom(&atom); err != nil {
 		return fmt.Errorf("cannot write Atom feed: %w", err)
 	}
-
-	rss, err := os.Create("dist/feed.rss")
-	if err != nil {
-		return fmt.Errorf("cannot create RSS feed: %w", err)
+	if err := writeFileIfChanged(filepath.Join(s.cfg.Dist, "feed.atom"), atom.Bytes(), 0o644); err != nil {
+		return fmt.Errorf("cannot save Atom feed: %w", err)
 	}
-	if err := feed.WriteRss(rss); err != nil {
+	var rss bytes.Buffer
+	if err := feed.WriteRss(&rss); err != nil {
 		return fmt.Errorf("cannot write RSS feed: %w", err)
+	}
+	if err := writeFileIfChanged(filepath.Join(s.cfg.Dist, "feed.rss"), rss.Bytes(), 0o644); err != nil {
+		return fmt.Errorf("cannot save RSS feed: %w", err)
 	}
 
 	return nil
