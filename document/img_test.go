@@ -3,7 +3,9 @@ package document
 import (
 	"bytes"
 	"errors"
+	"io"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/rwcarlsen/goexif/exif"
@@ -27,6 +29,7 @@ gear:
 func TestNewIMG(t *testing.T) {
 	c, err := newConfigFromBytes([]byte(sampleWinterYML))
 	assert.NilError(t, err)
+	c.Dist = filepath.Join(t.TempDir(), "dist")
 
 	im, err := NewIMG(sampleJPGPath, c)
 	assert.NilError(t, err)
@@ -35,7 +38,9 @@ func TestNewIMG(t *testing.T) {
 	assert.NilError(t, err)
 	defer srcf.Close()
 
-	assert.NilError(t, im.Load(srcf))
+	// Loading needs only the JPEG headers. The complete source is handed to
+	// cwebp by path during Render instead of being retained as decoded pixels.
+	assert.NilError(t, im.Load(io.LimitReader(srcf, 4096)))
 
 	var b bytes.Buffer
 	assert.NilError(t, im.Render(&b))

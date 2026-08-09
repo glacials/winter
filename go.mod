@@ -21,7 +21,6 @@ require (
 	github.com/spf13/cobra v1.5.0
 	github.com/tdemin/gmnhg v0.4.2
 	github.com/yargevad/filepathx v1.0.0
-	golang.org/x/image v0.18.0
 	golang.org/x/net v0.38.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.1
@@ -40,6 +39,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
+	golang.org/x/image v0.18.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 )
 

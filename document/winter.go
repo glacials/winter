@@ -407,10 +407,13 @@ func (s *Substructure) ExecuteAll(dist string) error {
 			if err != nil {
 				return fmt.Errorf("cannot open image: %w", err)
 			}
-			defer srcf.Close()
 			dest := filepath.Join(dist, im.WebPath)
 			if err := im.Load(srcf); err != nil {
+				_ = srcf.Close()
 				return wrapErrorf(err, "cannot load image")
+			}
+			if err := srcf.Close(); err != nil {
+				return fmt.Errorf("cannot close image %q: %w", im.SourcePath, err)
 			}
 			if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 				return fmt.Errorf(
@@ -428,9 +431,13 @@ func (s *Substructure) ExecuteAll(dist string) error {
 					err,
 				)
 			}
-			defer destf.Close()
-			if err := im.Render(destf); err != nil {
-				return err
+			renderErr := im.Render(destf)
+			closeErr := destf.Close()
+			if renderErr != nil {
+				return renderErr
+			}
+			if closeErr != nil {
+				return fmt.Errorf("cannot close image %q: %w", dest, closeErr)
 			}
 			if err := s.Rebuild(im.SourcePath); err != nil {
 				return fmt.Errorf(

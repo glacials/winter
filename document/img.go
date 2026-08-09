@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"image"
-	"image/jpeg"
 	"io"
 	"log/slog"
 	"math"
@@ -20,7 +19,6 @@ import (
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/mknote"
 	"github.com/rwcarlsen/goexif/tiff"
-	"golang.org/x/image/draw"
 )
 
 type EXIF struct {
@@ -52,7 +50,6 @@ type img struct {
 	cfg                      *Config
 	configuredPurchaseURL    string
 	hasConfiguredPurchaseURL bool
-	photo                    image.Image
 }
 
 type thumbnail struct {
@@ -164,19 +161,20 @@ func (im *img) Load(r io.Reader) error {
 	if err := im.loadMetadataFromSource(); err != nil {
 		return err
 	}
-	srcPhoto, err := jpeg.Decode(r)
+	cfg, _, err := image.DecodeConfig(r)
 	if err != nil {
 		return fmt.Errorf(
-			"cannot decode photo %q (maybe not an image?): %w",
+			"cannot decode photo dimensions for %q (maybe not an image?): %w",
 			im.SourcePath,
 			err,
 		)
 	}
-	im.photo = srcPhoto
-	if err := im.intuitThumbnails(srcPhoto, im.SourcePath, im.thumbnailDir()); err != nil {
-		return err
-	}
-	return nil
+	return im.populateThumbnails(
+		im.SourcePath,
+		im.thumbnailDir(),
+		cfg.Width,
+		cfg.Height,
+	)
 }
 
 func (im *img) loadThumbnailMetadata() error {
@@ -198,7 +196,11 @@ func (im *img) loadThumbnailMetadata() error {
 }
 
 func (im *img) Render(w io.Writer) error {
-	if err := webpbin.Encode(w, im.photo); err != nil {
+	if err := webpbin.NewCWebP().
+		Quality(75).
+		InputFile(im.SourcePath).
+		Output(w).
+		Run(); err != nil {
 		return fmt.Errorf(
 			"cannot encode source image %q to WebP: %w",
 			im.SourcePath,
@@ -264,13 +266,8 @@ func (d *img) generatedPhotosAreFresh(src string) (bool, error) {
 		return false, fmt.Errorf("can't open photo at path `%s`: %w", src, err)
 	}
 	defer sourceFile.Close()
-	buf, err := io.ReadAll(sourceFile)
-	if err != nil {
-		return false, fmt.Errorf("cannot hash file %q: %w", src, err)
-	}
-
 	hash := fnv.New32()
-	_, err = hash.Write(buf)
+	_, err = io.Copy(hash, sourceFile)
 	if err != nil {
 		return false, fmt.Errorf("cannot compute hash for %q: %w", src, err)
 	}
@@ -392,20 +389,6 @@ func (im *img) thumbnails(srcPath string) error {
 				srcPath,
 			),
 		)
-		dstPhoto := image.NewRGBA(image.Rect(0, 0, thmb.Width, thmb.Height))
-
-		draw.CatmullRom.Scale(
-			dstPhoto,
-			image.Rectangle{
-				image.Point{0, 0},
-				image.Point{thmb.Width, thmb.Height},
-			},
-			im.photo,
-			image.Rectangle{image.Point{0, 0}, im.photo.Bounds().Size()},
-			draw.Over,
-			nil,
-		)
-
 		path := filepath.Join(im.cfg.Dist, thmb.WebPath)
 
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -424,41 +407,26 @@ func (im *img) thumbnails(srcPath string) error {
 				err,
 			)
 		}
-		defer destinationFile.Close()
-
-		if err := webpbin.Encode(destinationFile, dstPhoto); err != nil {
+		encoder := webpbin.NewCWebP().
+			Quality(75).
+			InputFile(srcPath).
+			Output(destinationFile)
+		encoder.Arg("-resize", strconv.Itoa(thmb.Width), strconv.Itoa(thmb.Height))
+		encodeErr := encoder.Run()
+		closeErr := destinationFile.Close()
+		if encodeErr != nil {
 			return fmt.Errorf(
 				"cannot encode WebP thumbnail to %q: %w",
 				thmb.WebPath,
-				err,
+				encodeErr,
 			)
+		}
+		if closeErr != nil {
+			return fmt.Errorf("cannot close WebP thumbnail %q: %w", thmb.WebPath, closeErr)
 		}
 	}
 
 	return nil
-}
-
-// intuitThumbnails decides how many and which thumbnails the image should have
-// (whether or not they already exist)
-// and replaces im.Thumbnails with a slice of them.
-// It does not generate any thumbnails.
-//
-// The thumbnails decided upon have widths of powers of 2,
-// from 1 until the largest width possible that is still smaller than the source image.
-// Heights are automatically calculated to mantain aspect ratio.
-//
-// For example, a 500x500 image called foo.jpg would have thumbnails of sizes
-// 1x1, 2x2, 4x4, 8x8, 16x16, 32x32, 64x64, 128x128, and 256x256.
-// The thumbnail WebPaths would be
-// foo.1x1.webp,
-// foo.2x2.webp,
-// and so on.
-func (im *img) intuitThumbnails(
-	srcPhoto image.Image,
-	srcPath, thumbdir string,
-) error {
-	size := srcPhoto.Bounds().Size()
-	return im.populateThumbnails(srcPath, thumbdir, size.X, size.Y)
 }
 
 func (im *img) populateThumbnails(
