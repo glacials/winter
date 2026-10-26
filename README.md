@@ -38,12 +38,34 @@ Winter enforces these rules itself, so you don't have to remember them.
 
 ## Installation
 
-```sh
-# CLI
-go install twos.dev/winter@latest
-winter --help
+Install Go 1.23 or newer. On Ubuntu (including Ubuntu in WSL), install the
+standard C build tools and headers before compiling Winter:
 
-# Go library
+```sh
+sudo apt update
+sudo apt install build-essential
+```
+
+Install the CLI from any directory; you do not need to clone Winter first:
+
+```sh
+go install twos.dev/winter@latest
+export PATH="$(go env GOPATH)/bin:$PATH"
+winter --help
+```
+
+Go installs the executable in `$(go env GOPATH)/bin` by default (`$HOME/go/bin`
+when `GOPATH` is unset). Add the `export PATH` line to your shell's startup file
+(for example, `~/.bashrc` for Bash) to make `winter` available in new terminals.
+If you set `GOBIN`, add that directory to `PATH` instead.
+
+In WSL, keep cloned projects in the Linux filesystem (for example, `~/pj`),
+especially if Git reports `chmod ... .git/config.lock: Operation not permitted`
+under `/mnt/c`.
+
+For use as a Go library:
+
+```sh
 go get -u twos.dev/winter@latest
 ```
 
