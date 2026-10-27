@@ -249,9 +249,9 @@ func yearly(docs []Document) years {
 	groups := map[int]*year{}
 	for _, doc := range docs {
 		y := 0
-		undated := doc.Metadata().CreatedAt.IsZero()
+		undated := doc.Metadata().PublishedAt.IsZero()
 		if !undated {
-			y = doc.Metadata().CreatedAt.Year()
+			y = doc.Metadata().PublishedAt.Year()
 		}
 		if _, ok := groups[y]; !ok {
 			groups[y] = &year{

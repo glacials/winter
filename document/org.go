@@ -67,14 +67,25 @@ func (d *OrgDocument) Load(r io.Reader) error {
 	orgwriter.TopLevelHLevel = 1
 
 	var err error
+	var publishedDate, legacyDate *time.Time
 	for k, v := range orgdoc.BufferSettings {
 		switch strings.ToLower(k) {
 		case "category":
 			d.meta.Category = v
-		case "date":
+		case "created":
 			d.meta.CreatedAt, err = time.Parse("2006-01-02", v)
 			if err != nil {
 				return err
+			}
+		case "published", "date":
+			parsed, err := time.Parse("2006-01-02", v)
+			if err != nil {
+				return err
+			}
+			if strings.EqualFold(k, "published") {
+				publishedDate = &parsed
+			} else {
+				legacyDate = &parsed
 			}
 		case "type":
 			var err error
@@ -94,6 +105,11 @@ func (d *OrgDocument) Load(r io.Reader) error {
 				return err
 			}
 		}
+	}
+	if publishedDate != nil {
+		d.meta.PublishedAt = *publishedDate
+	} else if legacyDate != nil {
+		d.meta.PublishedAt = *legacyDate
 	}
 
 	htm, err := orgdoc.Write(orgwriter)

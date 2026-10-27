@@ -18,8 +18,8 @@ func (s *Substructure) writefeed() error {
 	siteURL := url.URL{Scheme: "https", Host: s.cfg.Production.URL}
 	updated := time.Date(2022, 4, 7, 0, 0, 0, 0, time.UTC)
 	for _, doc := range s.docs.All {
-		if doc.Metadata().CreatedAt.After(updated) {
-			updated = doc.Metadata().CreatedAt
+		if doc.Metadata().PublishedAt.After(updated) {
+			updated = doc.Metadata().PublishedAt
 		}
 		if doc.Metadata().UpdatedAt.After(updated) {
 			updated = doc.Metadata().UpdatedAt
@@ -74,7 +74,7 @@ func (s *Substructure) writefeed() error {
 			Content:     bodyStr,
 			Description: bodyStr,
 			Link:        &feeds.Link{Href: itemURL.String()},
-			Created:     doc.Metadata().CreatedAt,
+			Created:     doc.Metadata().PublishedAt,
 			Updated:     doc.Metadata().UpdatedAt,
 		})
 	}

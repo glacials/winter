@@ -96,9 +96,9 @@ type testDoc struct {
 	meta *Metadata
 }
 
-func testDocument(title string, k kind, createdAt time.Time) Document {
+func testDocument(title string, k kind, publishedAt time.Time) Document {
 	meta := NewMetadata("src/test/"+strings.ToLower(strings.ReplaceAll(title, " ", "-")), filepath.Join("testdata", "templates"))
-	meta.CreatedAt = createdAt
+	meta.PublishedAt = publishedAt
 	meta.Kind = k
 	meta.Title = title
 	return testDoc{meta: meta}

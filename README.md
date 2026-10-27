@@ -180,7 +180,7 @@ Here is an example document called `example.md`:
 
 ```markdown
 ---
-date: 2022-07-07
+published: 2022-07-07
 filename: example.html
 type: post
 ---
@@ -201,7 +201,7 @@ The available frontmatter fields for HTML and Markdown are:
 
 ```yaml
 filename: example.html
-date: 2022-07-07
+published: 2022-07-07
 updated: 2022-11-10
 category: arbitrary string
 toc: true|false
@@ -212,7 +212,7 @@ The same fields are available in Org files:
 
 ```org
 #+FILENAME: example.html
-#+DATE: 2022-07-07
+#+PUBLISHED: 2022-07-07
 #+UPDATED: 2022-11-10
 #+CATEGORY: arbitrary string
 #+TOC: true|false
@@ -232,15 +232,21 @@ gives a minor visual treatment to the listing and display of documents with cate
 
 Otherwise, the category is semantic.
 
-#### `date`
+#### `published`
 
-Date is the publish date of the document written as `YYYY-MM-DD`.
+Published is the publish date of the document written as `YYYY-MM-DD`.
 It is available to templates as a Go
 [`time.Time`](https://pkg.go.dev/time#Time)
 using
-[`{{ .CreatedAt }}`](#createdat).
+[`{{ .PublishedAt }}`](#publishedat).
 
 When not set the document will not have a publish date attached to it.
+
+#### `date`
+
+An alias for [`published`](#published), retained for existing documents.
+Use `published` for new content. If both are set, `published` takes precedence,
+regardless of their order. This also applies to `#+PUBLISHED` and `#+DATE` in Org.
 
 #### `filename`
 
@@ -255,6 +261,12 @@ For example, `envy.html.tmpl` and `envy.md` would both become `envy.html`
 
 A document's **web path** is defined as its `filename`.
 The web path is accessible to templates using the [`{{ .WebPath }}`](#webpath) template variable.
+
+#### `created`
+
+The date work on the document began, written as `YYYY-MM-DD`.
+Available to templates as [`{{ .CreatedAt }}`](#createdat).
+It does not affect publication dates, sorting, or feeds.
 
 #### `updated`
 
@@ -359,12 +371,12 @@ _Type: `string`_
 The value specified by the frontmatter [`category`](#category) field.
 This is an arbitrary string.
 
-##### `{{ .CreatedAt }}`
+##### `{{ .PublishedAt }}`
 
 _Type: [`time.Time`](https://pkg.go.dev/time#Time)_
 
 The publish date of the document as specified by the frontmatter
-[`date`](#date)
+[`published`](#published) (or its [`date`](#date) alias)
 attribute.
 
 This value can be formatted using Go's
@@ -372,16 +384,16 @@ This value can be formatted using Go's
 function:
 
 ```template
-{{ .CreatedAt.Format "2006 January" }} <!-- Renders 2022 July  -->
-{{ .CreatedAt.Format "2006-01-02" }}   <!-- Renders 2022-07-08 -->
+{{ .PublishedAt.Format "2006 January" }} <!-- Renders 2022 July  -->
+{{ .PublishedAt.Format "2006-01-02" }}   <!-- Renders 2022-07-08 -->
 ```
 
-Use `{{ .CreatedAt.IsZero }}` to see if the date was not set.
+Use `{{ .PublishedAt.IsZero }}` to see if the date was not set.
 You can use this to hide unset dates:
 
 ```template
-{{ if not .CreatedAt.IsZero }}
-  published {{ .CreatedAt.Format "2006 January" }}
+{{ if not .PublishedAt.IsZero }}
+  published {{ .PublishedAt.Format "2006 January" }}
 {{ end }}
 ```
 
@@ -390,7 +402,7 @@ You can use this to hide unset dates:
 _Type: `[]Document`_
 
 All documents Winter knows about,
-ordered by creation date descending.
+ordered by publication date descending.
 
 ##### `{{ .IsType "<string>" }}`
 
@@ -414,6 +426,13 @@ _Type: `string`_
 The value of the document's first level 1 heading
 (`<h1>` in HTML, `#` in Markdown, `*` in Org).
 
+##### `{{ .CreatedAt }}`
+
+_Type: [`time.Time`](https://pkg.go.dev/time#Time)_
+
+The date work began, as specified by [`created`](#created).
+Use `.CreatedAt.IsZero` to check whether it is set, and `.CreatedAt.Format` to format it.
+
 ##### `{{ .UpdatedAt }}`
 
 _Type: [`time.Time`](https://pkg.go.dev/time#Time)_
@@ -424,7 +443,7 @@ as specified by the frontmatter
 attribute.
 
 This value behaves identically to
-[`{{ .CreatedAt }}`](#createdat).
+[`{{ .PublishedAt }}`](#publishedat).
 For details on dealing with it,
 see that documentation.
 

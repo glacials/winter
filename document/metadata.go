@@ -31,8 +31,9 @@ type Metadata struct {
 	// treatment will do. If this doesn't work for you, go fix that
 	// code.
 	Category string `yaml:"category,omitempty"`
-	// CreatedAt is the time the document was first published.
-	CreatedAt time.Time `yaml:"date,omitempty"`
+	// PublishedAt is the time the document was first published.
+	// The canonical frontmatter key is published; date remains an input alias.
+	PublishedAt time.Time `yaml:"published,omitempty"`
 	// Kind specifies the type of document this is.
 	// In every user-facing context, this is called "type".
 	// In Go we cannot use the "type" keyword, so we use "kind" instead.
@@ -67,6 +68,8 @@ type Metadata struct {
 	// document. If true, the table of contents is rendered immediately
 	// above the first non-first-level heading.
 	TOC bool `yaml:"toc,omitempty"`
+	// CreatedAt is the time work on the document began.
+	CreatedAt time.Time `yaml:"created,omitempty"`
 	// UpdatedAt is the time the document was last meaningfully updated.
 	UpdatedAt time.Time `yaml:"updated,omitempty"`
 	// WebPath is the path component of the URL that will point to this document,
@@ -127,6 +130,28 @@ func (meta *Metadata) UnmarshalDocument(r io.Reader) ([]byte, error) {
 		return nil, fmt.Errorf("cannot load frontmatter: %w", err)
 	}
 	return b, nil
+}
+
+// UnmarshalYAML accepts date as a compatibility alias for published.
+// When both are set, published takes precedence regardless of key order.
+func (meta *Metadata) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plainMetadata Metadata
+	decoded := plainMetadata(*meta)
+	if err := unmarshal(&decoded); err != nil {
+		return err
+	}
+	var dates struct {
+		Published *time.Time `yaml:"published"`
+		Date      *time.Time `yaml:"date"`
+	}
+	if err := unmarshal(&dates); err != nil {
+		return err
+	}
+	if dates.Published == nil && dates.Date != nil {
+		decoded.PublishedAt = *dates.Date
+	}
+	*meta = Metadata(decoded)
+	return nil
 }
 
 // funcmap returns a [template.FuncMap] for the document.

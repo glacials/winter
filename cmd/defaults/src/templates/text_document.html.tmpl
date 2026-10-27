@@ -8,11 +8,11 @@
     <div class="container">
       <header>
         {{ template "_nav.html.tmpl" . }}
-        {{ if and (IsType "post")  (not .CreatedAt.IsZero) }}
+        {{ if and (IsType "post")  (not .PublishedAt.IsZero) }}
           <small style="text-align:center; display: block">
             <i>
               published
-              {{ .CreatedAt.Format "2006 January" }}{{ if not .UpdatedAt.IsZero }}
+              {{ .PublishedAt.Format "2006 January" }}{{ if not .UpdatedAt.IsZero }}
                 | last updated
                 {{ .UpdatedAt.Format "2006 January" }}
               {{ end }}</i
@@ -47,9 +47,9 @@
         <p>
           <small>
             <i>
-              {{ if not .CreatedAt.IsZero }}
+              {{ if not .PublishedAt.IsZero }}
                 published
-                {{ .CreatedAt.Format "2006 January" }}{{ if not .UpdatedAt.IsZero }}
+                {{ .PublishedAt.Format "2006 January" }}{{ if not .UpdatedAt.IsZero }}
                   / last updated
                   {{ .UpdatedAt.Format "2006 January" }}
                 {{ end }}

@@ -132,7 +132,7 @@ func (d *documents) Len() int {
 }
 
 func (d *documents) Less(i, j int) bool {
-	return d.All[i].Metadata().CreatedAt.After(d.All[j].Metadata().CreatedAt)
+	return d.All[i].Metadata().PublishedAt.After(d.All[j].Metadata().PublishedAt)
 }
 
 func (d *documents) Swap(i, j int) {
